@@ -1,4 +1,4 @@
-package com.simi.pictureselector.rn_package;
+package com.simi.pictureselector;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -19,9 +19,6 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
-import com.simi.pictureselector.GlideEngine;
-import com.simi.pictureselector.R;
-import com.simi.pictureselector.basic.PictureSelectionModel;
 import com.simi.pictureselector.basic.PictureSelector;
 import com.simi.pictureselector.config.PictureMimeType;
 import com.simi.pictureselector.config.SelectMimeType;
@@ -30,7 +27,6 @@ import com.simi.pictureselector.engine.CompressFileEngine;
 import com.simi.pictureselector.entity.LocalMedia;
 import com.simi.pictureselector.entity.MediaExtraInfo;
 import com.simi.pictureselector.interfaces.OnKeyValueResultCallbackListener;
-import com.simi.pictureselector.interfaces.OnQueryFilterListener;
 import com.simi.pictureselector.interfaces.OnResultCallbackListener;
 import com.simi.pictureselector.interfaces.OnVideoThumbnailEventListener;
 import com.simi.pictureselector.style.BottomNavBarStyle;
@@ -49,10 +45,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import top.zibin.luban.CompressionPredicate;
 import top.zibin.luban.Luban;
 import top.zibin.luban.OnNewCompressListener;
-import top.zibin.luban.OnRenameListener;
 
 public class SimiSelectorModule {
     private static final String TAG = "SimiSelectorModule";
@@ -62,9 +56,10 @@ public class SimiSelectorModule {
     private static final boolean DEFAULT_IS_SINGLE = false;
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
+    private final ReactApplicationContext reactContext;
 
     public SimiSelectorModule(ReactApplicationContext reactContext) {
-        ContextUtils.init(reactContext);
+        this.reactContext=reactContext;
         setCustomStyle(reactContext);
     }
 
@@ -111,7 +106,7 @@ public class SimiSelectorModule {
     }
 
     private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, Promise promise) {
-        PictureSelector.create(ContextUtils.getApp())
+        PictureSelector.create(reactContext.getCurrentActivity())
                 .openGallery(SelectMimeType.ofAll())
                 .setSelectorUIStyle(selectorStyle)
                 .setSelectionMode(isSingleType ? SelectModeConfig.SINGLE : SelectModeConfig.MULTIPLE)
@@ -159,7 +154,7 @@ public class SimiSelectorModule {
     private void setMediaDimensions(WritableMap media, String mimeType, String path, int width, int height) {
         if (PictureMimeType.isHasImage(mimeType)) {
             if (width == 0 || height == 0) {
-                MediaExtraInfo info = MediaUtils.getImageSize(ContextUtils.getApp(), path);
+                MediaExtraInfo info = MediaUtils.getImageSize(reactContext, path);
                 media.putInt("width", info.getWidth());
                 media.putInt("height", info.getHeight());
             } else {
@@ -168,7 +163,7 @@ public class SimiSelectorModule {
             }
         } else if (PictureMimeType.isHasVideo(mimeType)) {
             if (width == 0 || height == 0) {
-                MediaExtraInfo info = MediaUtils.getVideoSize(ContextUtils.getApp(), path);
+                MediaExtraInfo info = MediaUtils.getVideoSize(reactContext, path);
                 media.putInt("videoImageWidth", info.getWidth());
                 media.putInt("videoImageHeight", info.getHeight());
             } else {
@@ -307,7 +302,7 @@ public class SimiSelectorModule {
     }
 
     private String getVideoThumbnailDir() {
-        File dir = ContextUtils.getApp().getExternalFilesDir("SimiThumbnail");
+        File dir = reactContext.getExternalFilesDir("SimiThumbnail");
         if (dir != null && !dir.exists()) {
             dir.mkdirs();
         }

@@ -1,4 +1,4 @@
-package com.simi.pictureselector.rn_package;
+package com.simi.pictureselector;
 
 import androidx.annotation.NonNull;
 
