@@ -1,0 +1,15 @@
+{
+  "name": "simi_picture_selector",
+  "version": "1.0.0",
+  "description": "react native 原生图片选择器",
+  "main": "src/index",
+  "author": "CLChater <> (https://github.com/CLChater)",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/CLChater/simi_picture_selector.git",
+  "scripts": {
+  },
+  "devDependencies": {
+    "react": "18.2.0",
+    "react-native": "0.72.6"
+  }
+}
