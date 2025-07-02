@@ -33,7 +33,6 @@ import com.simi.pictureselector.style.BottomNavBarStyle;
 import com.simi.pictureselector.style.PictureSelectorStyle;
 import com.simi.pictureselector.style.SelectMainStyle;
 import com.simi.pictureselector.style.TitleBarStyle;
-import com.simi.pictureselector.utils.ContextUtils;
 import com.simi.pictureselector.utils.DateUtils;
 import com.simi.pictureselector.utils.DensityUtil;
 import com.simi.pictureselector.utils.MediaUtils;
@@ -56,10 +55,11 @@ public class SimiSelectorModule {
     private static final boolean DEFAULT_IS_SINGLE = false;
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
+    private static final int DEFAULT_SELECT_MIME_TYPE = SelectMimeType.ofAll();//0: all , 1: image , 2: video , 3: audio
     private final ReactApplicationContext reactContext;
 
     public SimiSelectorModule(ReactApplicationContext reactContext) {
-        this.reactContext=reactContext;
+        this.reactContext = reactContext;
         setCustomStyle(reactContext);
     }
 
@@ -85,6 +85,7 @@ public class SimiSelectorModule {
             boolean isSingle = DEFAULT_IS_SINGLE;
             int maxImageNum = DEFAULT_MAX_IMAGE_NUM;
             int maxVideoNum = DEFAULT_MAX_VIDEO_NUM;
+            int selectMimeType = DEFAULT_SELECT_MIME_TYPE;
 
             if (options != null) {
                 if (options.hasKey("isSingle")) {
@@ -96,18 +97,21 @@ public class SimiSelectorModule {
                 if (options.hasKey("maxVideoNum")) {
                     maxVideoNum = options.getInt("maxVideoNum");
                 }
+                if (options.hasKey("selectMimeType")) {
+                    selectMimeType = options.getInt("selectMimeType");
+                }
             }
 
-            openSelector(isSingle, maxImageNum, maxVideoNum, promise);
+            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, promise);
         } catch (Throwable e) {
             promise.reject("NATIVE_ERROR", e);
             Log.e(TAG, "openSelector: ", e);
         }
     }
 
-    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, Promise promise) {
+    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, Promise promise) {
         PictureSelector.create(reactContext.getCurrentActivity())
-                .openGallery(SelectMimeType.ofAll())
+                .openGallery(selectMimeType)
                 .setSelectorUIStyle(selectorStyle)
                 .setSelectionMode(isSingleType ? SelectModeConfig.SINGLE : SelectModeConfig.MULTIPLE)
                 .setImageEngine(GlideEngine.createGlideEngine())
@@ -131,14 +135,19 @@ public class SimiSelectorModule {
                             String path = localMedia.getPath();
 
                             media.putString("mediaType", mimeType);
-                            media.putString("uri", localMedia.getRealPath());
+                            String uri = localMedia.getCompressPath() != null ? localMedia.getCompressPath() : localMedia.getRealPath();
+                            media.putString("uri", "file://" + uri);
+                            media.putDouble("size", (double) localMedia.getSize());
 
                             setMediaDimensions(media, mimeType, path, localMedia.getWidth(), localMedia.getHeight());
 
                             if (PictureMimeType.isHasVideo(mimeType)) {
                                 media.putString("videoImage", localMedia.getVideoThumbnailPath());
                             }
-
+                            if (isSingleType) {
+                                promise.resolve(media);
+                                return;
+                            }
                             medias.pushMap(media);
                         }
                         promise.resolve(medias);
