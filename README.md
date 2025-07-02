@@ -10,7 +10,7 @@ react native 原生图片选择器
 ```
 import SimiPictureSelector from 'simi_picture_selector';
 
-SimiPictureSelector.openSelector({isSingle: false, maxImageNum: 6, maxVideoNum: 1, selectMimeType: 0});    // 自定义上报
+SimiPictureSelector.openSelector({isSingle: false, maxImageNum: 6, maxVideoNum: 1, selectMimeType: 0});
 ```
 
 
