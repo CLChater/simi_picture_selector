@@ -29,6 +29,7 @@ import com.simi.pictureselector.entity.MediaExtraInfo;
 import com.simi.pictureselector.interfaces.OnKeyValueResultCallbackListener;
 import com.simi.pictureselector.interfaces.OnResultCallbackListener;
 import com.simi.pictureselector.interfaces.OnVideoThumbnailEventListener;
+import com.simi.pictureselector.language.LanguageConfig;
 import com.simi.pictureselector.style.BottomNavBarStyle;
 import com.simi.pictureselector.style.PictureSelectorStyle;
 import com.simi.pictureselector.style.SelectMainStyle;
@@ -55,6 +56,7 @@ public class SimiSelectorModule {
     private static final boolean DEFAULT_IS_SINGLE = false;
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
+    private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //0 简体中文 2 英文
     private static final int DEFAULT_SELECT_MIME_TYPE = SelectMimeType.ofAll();//0: all , 1: image , 2: video , 3: audio
     private final ReactApplicationContext reactContext;
 
@@ -86,6 +88,7 @@ public class SimiSelectorModule {
             int maxImageNum = DEFAULT_MAX_IMAGE_NUM;
             int maxVideoNum = DEFAULT_MAX_VIDEO_NUM;
             int selectMimeType = DEFAULT_SELECT_MIME_TYPE;
+            int selectLanguage = DEFAULT_LANGUAGE;
 
             if (options != null) {
                 if (options.hasKey("isSingle")) {
@@ -100,19 +103,23 @@ public class SimiSelectorModule {
                 if (options.hasKey("selectMimeType")) {
                     selectMimeType = options.getInt("selectMimeType");
                 }
+                if (options.hasKey("selectLanguage")) {
+                    selectLanguage = options.getInt("selectLanguage");
+                }
             }
 
-            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, promise);
+            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, promise);
         } catch (Throwable e) {
             promise.reject("NATIVE_ERROR", e);
             Log.e(TAG, "openSelector: ", e);
         }
     }
 
-    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, Promise promise) {
+    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, int selectLanguage, Promise promise) {
         PictureSelector.create(reactContext.getCurrentActivity())
                 .openGallery(selectMimeType)
                 .setSelectorUIStyle(selectorStyle)
+                .setLanguage(selectLanguage)
                 .setSelectionMode(isSingleType ? SelectModeConfig.SINGLE : SelectModeConfig.MULTIPLE)
                 .setImageEngine(GlideEngine.createGlideEngine())
                 .setCompressEngine(new ImageFileCompressEngine())
