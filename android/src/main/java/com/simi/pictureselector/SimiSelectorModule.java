@@ -1,14 +1,18 @@
 package com.simi.pictureselector;
 
+import static java.security.AccessController.getContext;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
@@ -24,9 +28,11 @@ import com.simi.pictureselector.config.PictureMimeType;
 import com.simi.pictureselector.config.SelectMimeType;
 import com.simi.pictureselector.config.SelectModeConfig;
 import com.simi.pictureselector.engine.CompressFileEngine;
+import com.simi.pictureselector.engine.CropFileEngine;
 import com.simi.pictureselector.entity.LocalMedia;
 import com.simi.pictureselector.entity.MediaExtraInfo;
 import com.simi.pictureselector.interfaces.OnKeyValueResultCallbackListener;
+import com.simi.pictureselector.interfaces.OnMediaEditInterceptListener;
 import com.simi.pictureselector.interfaces.OnResultCallbackListener;
 import com.simi.pictureselector.interfaces.OnVideoThumbnailEventListener;
 import com.simi.pictureselector.language.LanguageConfig;
@@ -36,8 +42,12 @@ import com.simi.pictureselector.style.SelectMainStyle;
 import com.simi.pictureselector.style.TitleBarStyle;
 import com.simi.pictureselector.utils.DateUtils;
 import com.simi.pictureselector.utils.DensityUtil;
+import com.simi.pictureselector.utils.ImageLoaderUtils;
 import com.simi.pictureselector.utils.MediaUtils;
 import com.simi.pictureselector.utils.PictureFileUtils;
+import com.simi.pictureselector.utils.StyleUtils;
+import com.yalantis.ucrop.UCrop;
+import com.yalantis.ucrop.UCropImageEngine;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -54,6 +64,7 @@ public class SimiSelectorModule {
 
     private final PictureSelectorStyle selectorStyle = new PictureSelectorStyle();
     private static final boolean DEFAULT_IS_SINGLE = false;
+    private static final boolean DEFAULT_CROP = false;
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
     private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //0 简体中文 2 英文
@@ -85,6 +96,7 @@ public class SimiSelectorModule {
     public void openSelector(ReadableMap options, Promise promise) {
         try {
             boolean isSingle = DEFAULT_IS_SINGLE;
+            boolean isCrop = DEFAULT_CROP;
             int maxImageNum = DEFAULT_MAX_IMAGE_NUM;
             int maxVideoNum = DEFAULT_MAX_VIDEO_NUM;
             int selectMimeType = DEFAULT_SELECT_MIME_TYPE;
@@ -106,23 +118,28 @@ public class SimiSelectorModule {
                 if (options.hasKey("selectLanguage")) {
                     selectLanguage = options.getInt("selectLanguage");
                 }
+                if (options.hasKey("isCrop")) {
+                    isCrop = options.getBoolean("isCrop");
+                }
             }
 
-            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, promise);
+            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop, promise);
         } catch (Throwable e) {
             promise.reject("NATIVE_ERROR", e);
             Log.e(TAG, "openSelector: ", e);
         }
     }
 
-    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, int selectLanguage, Promise promise) {
+    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, int selectLanguage, boolean isCrop, Promise promise) {
         PictureSelector.create(reactContext.getCurrentActivity())
                 .openGallery(selectMimeType)
                 .setSelectorUIStyle(selectorStyle)
                 .setLanguage(selectLanguage)
                 .setSelectionMode(isSingleType ? SelectModeConfig.SINGLE : SelectModeConfig.MULTIPLE)
                 .setImageEngine(GlideEngine.createGlideEngine())
+//                .setCropEngine(new ImageFileCropEngine())
                 .setCompressEngine(new ImageFileCompressEngine())
+                .setEditMediaInterceptListener(isCrop ? new MeOnMediaEditInterceptListener(getSandboxPath(), buildOptions()) : null)
                 .setImageSpanCount(3)
                 .isOriginalControl(true)
                 .isPageStrategy(true)
@@ -144,6 +161,7 @@ public class SimiSelectorModule {
                             media.putString("mediaType", mimeType);
                             String uri = localMedia.getCompressPath() != null ? localMedia.getCompressPath() : localMedia.getRealPath();
                             media.putString("uri", "file://" + uri);
+                            media.putString("fileName", localMedia.getFileName());
                             media.putDouble("size", (double) localMedia.getSize());
 
                             setMediaDimensions(media, mimeType, path, localMedia.getWidth(), localMedia.getHeight());
@@ -268,6 +286,149 @@ public class SimiSelectorModule {
         }
     }
 
+    /**
+     * 自定义编辑
+     */
+    private static class MeOnMediaEditInterceptListener implements OnMediaEditInterceptListener {
+        private final String outputCropPath;
+        private final UCrop.Options options;
+
+        public MeOnMediaEditInterceptListener(String outputCropPath, UCrop.Options options) {
+            this.outputCropPath = outputCropPath;
+            this.options = options;
+        }
+
+        @Override
+        public void onStartMediaEdit(Fragment fragment, LocalMedia currentLocalMedia, int requestCode) {
+            String currentEditPath = currentLocalMedia.getAvailablePath();
+            Uri inputUri = PictureMimeType.isContent(currentEditPath)
+                    ? Uri.parse(currentEditPath) : Uri.fromFile(new File(currentEditPath));
+            Uri destinationUri = Uri.fromFile(
+                    new File(outputCropPath, DateUtils.getCreateFileName("CROP_") + ".jpeg"));
+            UCrop uCrop = UCrop.of(inputUri, destinationUri);
+            options.setHideBottomControls(false);
+            uCrop.withOptions(options);
+            uCrop.setImageEngine(new UCropImageEngine() {
+                @Override
+                public void loadImage(Context context, String url, ImageView imageView) {
+                    if (!ImageLoaderUtils.assertValidRequest(context)) {
+                        return;
+                    }
+                    Glide.with(context).load(url).override(180, 180).into(imageView);
+                }
+
+                @Override
+                public void loadImage(Context context, Uri url, int maxWidth, int maxHeight, OnCallbackListener<Bitmap> call) {
+                    Glide.with(context).asBitmap().load(url).override(maxWidth, maxHeight).into(new CustomTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                            if (call != null) {
+                                call.onCall(resource);
+                            }
+                        }
+
+                        @Override
+                        public void onLoadCleared(@Nullable Drawable placeholder) {
+                            if (call != null) {
+                                call.onCall(null);
+                            }
+                        }
+                    });
+                }
+            });
+            uCrop.startEdit(fragment.requireActivity(), fragment, requestCode);
+        }
+    }
+
+    /**
+     * 自定义裁剪
+     */
+//    private class ImageFileCropEngine implements CropFileEngine {
+//
+//        @Override
+//        public void onStartCrop(Fragment fragment, Uri srcUri, Uri destinationUri, ArrayList<String> dataSource, int requestCode) {
+//            UCrop.Options options = buildOptions();
+//            UCrop uCrop = UCrop.of(srcUri, destinationUri, dataSource);
+//            uCrop.withOptions(options);
+//            uCrop.setImageEngine(new UCropImageEngine() {
+//                @Override
+//                public void loadImage(Context context, String url, ImageView imageView) {
+//                    if (!ImageLoaderUtils.assertValidRequest(context)) {
+//                        return;
+//                    }
+//                    Glide.with(context).load(url).override(180, 180).into(imageView);
+//                }
+//
+//                @Override
+//                public void loadImage(Context context, Uri url, int maxWidth, int maxHeight, OnCallbackListener<Bitmap> call) {
+//                    Glide.with(context).asBitmap().load(url).override(maxWidth, maxHeight).into(new CustomTarget<Bitmap>() {
+//                        @Override
+//                        public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+//                            if (call != null) {
+//                                call.onCall(resource);
+//                            }
+//                        }
+//
+//                        @Override
+//                        public void onLoadCleared(@Nullable Drawable placeholder) {
+//                            if (call != null) {
+//                                call.onCall(null);
+//                            }
+//                        }
+//                    });
+//                }
+//            });
+//            uCrop.start(fragment.requireActivity(), fragment, requestCode);
+//        }
+//    }
+
+    /**
+     * 配制UCrop，可根据需求自我扩展
+     *
+     * @return
+     */
+    private UCrop.Options buildOptions() {
+        UCrop.Options options = new UCrop.Options();
+        options.setHideBottomControls(true);
+        options.setFreeStyleCropEnabled(false);
+        options.setShowCropFrame(true);
+        options.setShowCropGrid(true);
+        options.setCircleDimmedLayer(false);
+        options.isCropDragSmoothToCenter(false);
+        options.isForbidCropGifWebp(false);
+        options.isForbidSkipMultipleCrop(true);
+        options.setMaxScaleMultiplier(100);
+        int color_blue = ContextCompat.getColor(reactContext, R.color.ps_color_10AFFF);
+        options.setToolbarColor(color_blue);
+        options.setToolbarWidgetColor(color_blue);
+        options.setActiveControlsWidgetColor(color_blue);
+        if (selectorStyle.getSelectMainStyle().getStatusBarColor() != 0) {
+            SelectMainStyle mainStyle = selectorStyle.getSelectMainStyle();
+            boolean isDarkStatusBarBlack = mainStyle.isDarkStatusBarBlack();
+            int statusBarColor = mainStyle.getStatusBarColor();
+            options.isDarkStatusBarBlack(isDarkStatusBarBlack);
+            if (StyleUtils.checkStyleValidity(statusBarColor)) {
+                options.setStatusBarColor(statusBarColor);
+                options.setToolbarColor(statusBarColor);
+            } else {
+                options.setStatusBarColor(ContextCompat.getColor(reactContext, R.color.ps_color_grey));
+                options.setToolbarColor(ContextCompat.getColor(reactContext, R.color.ps_color_grey));
+            }
+            TitleBarStyle titleBarStyle = selectorStyle.getTitleBarStyle();
+            if (StyleUtils.checkStyleValidity(titleBarStyle.getTitleTextColor())) {
+                options.setToolbarWidgetColor(titleBarStyle.getTitleTextColor());
+            } else {
+                options.setToolbarWidgetColor(ContextCompat.getColor(reactContext, R.color.ps_color_white));
+            }
+        } else {
+            options.setStatusBarColor(ContextCompat.getColor(reactContext, R.color.ps_color_grey));
+            options.setToolbarColor(ContextCompat.getColor(reactContext, R.color.ps_color_grey));
+            options.setToolbarWidgetColor(ContextCompat.getColor(reactContext, R.color.ps_color_white));
+        }
+        return options;
+    }
+
+
     private OnVideoThumbnailEventListener getVideoThumbnailEventListener() {
         return new MeOnVideoThumbnailEventListener(getVideoThumbnailDir());
     }
@@ -317,11 +478,30 @@ public class SimiSelectorModule {
         }
     }
 
+    /**
+     * 自定义视频封面图输出目录
+     *
+     * @return
+     */
     private String getVideoThumbnailDir() {
         File dir = reactContext.getExternalFilesDir("SimiThumbnail");
         if (dir != null && !dir.exists()) {
             dir.mkdirs();
         }
         return dir != null ? dir.getAbsolutePath() + File.separator : "";
+    }
+
+    /**
+     * 创建自定义输出目录
+     *
+     * @return
+     */
+    private String getSandboxPath() {
+        File externalFilesDir = reactContext.getExternalFilesDir("");
+        File customFile = new File(externalFilesDir.getAbsolutePath(), "SimiSandbox");
+        if (!customFile.exists()) {
+            customFile.mkdirs();
+        }
+        return customFile.getAbsolutePath() + File.separator;
     }
 }
