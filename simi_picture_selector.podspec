@@ -22,13 +22,14 @@ Pod::Spec.new do |s|
   s.swift_version = "5.0"
 
 
-  s.pod_target_xcconfig = {
-    "DEFINES_MODULE" => "YES",
-    "SWIFT_OBJC_BRIDGING_HEADER" => "ios/simi_picture_selector-Bridging-Header.h"
-  }
+s.pod_target_xcconfig = {
+  'SWIFT_OBJC_BRIDGING_HEADER' => 'ios/simi_picture_selector-Bridging-Header.h',
+  'DEFINES_MODULE' => 'YES',
+  'CLANG_ENABLE_MODULES' => 'YES'
+}
+  s.frameworks = 'UIKit', 'Photos'
 
   s.dependency "React"
-  s.dependency "ZLPhotoBrowser"
 
   # s.vendored_framework = 'Eagleeye.xcframework'
 
