@@ -23,7 +23,7 @@ Pod::Spec.new do |s|
 
 
 s.pod_target_xcconfig = {
-  'SWIFT_OBJC_BRIDGING_HEADER' => 'ios/simi_picture_selector-Bridging-Header.h',
+  'SWIFT_OBJC_BRIDGING_HEADER' => 'ios/simi_picture_selector/simi_picture_selector-Bridging-Header.h',
   'DEFINES_MODULE' => 'YES',
   'CLANG_ENABLE_MODULES' => 'YES'
 }
