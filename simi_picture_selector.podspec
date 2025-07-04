@@ -1,7 +1,6 @@
 require "json"
 
-# package = JSON.parse(File.read(File.join(__dir__, "package.json")))
-# folly_compiler_flags = '-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32'
+package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 
 Pod::Spec.new do |s|
   s.name         = "simi_picture_selector"
@@ -15,12 +14,21 @@ Pod::Spec.new do |s|
 
   s.platforms    = { :ios => min_ios_version_supported }
 
-  s.source_files = "ios/**/*.{h,m,mm,swift}"
+  s.source_files = "ios/**/*.{h,m,swift}"
+  s.resources    = "ios/ZLPhotoBrowser.bundle"
+
 
   s.requires_arc = true
   s.swift_version = "5.0"
 
-  s.dependency "React-Core"
+
+  s.pod_target_xcconfig = {
+    "DEFINES_MODULE" => "YES",
+    "SWIFT_OBJC_BRIDGING_HEADER" => "ios/simi_picture_selector-Bridging-Header.h"
+  }
+
+  s.dependency "React"
+  s.dependency "ZLPhotoBrowser"
 
   # s.vendored_framework = 'Eagleeye.xcframework'
 
