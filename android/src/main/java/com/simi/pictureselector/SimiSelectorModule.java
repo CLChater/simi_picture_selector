@@ -65,9 +65,10 @@ public class SimiSelectorModule {
     private final PictureSelectorStyle selectorStyle = new PictureSelectorStyle();
     private static final boolean DEFAULT_IS_SINGLE = false;
     private static final boolean DEFAULT_CROP = false;
+    private static final boolean DEFAULT_MIX_SELECT = false;//视频、图片混选
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
-    private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //0 简体中文 2 英文
+    private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //zh 简体中文 en 英文
     private static final int DEFAULT_SELECT_MIME_TYPE = SelectMimeType.ofAll();//0: all , 1: image , 2: video , 3: audio
     private final ReactApplicationContext reactContext;
 
@@ -101,6 +102,7 @@ public class SimiSelectorModule {
             int maxVideoNum = DEFAULT_MAX_VIDEO_NUM;
             int selectMimeType = DEFAULT_SELECT_MIME_TYPE;
             int selectLanguage = DEFAULT_LANGUAGE;
+            boolean isMixSelect = DEFAULT_MIX_SELECT;
 
             if (options != null) {
                 if (options.hasKey("isSingle")) {
@@ -116,26 +118,33 @@ public class SimiSelectorModule {
                     selectMimeType = options.getInt("selectMimeType");
                 }
                 if (options.hasKey("selectLanguage")) {
-                    selectLanguage = options.getInt("selectLanguage");
+                    String language = options.getString("selectLanguage");
+                    if (language != null && language.toLowerCase().contains("en")) {
+                        selectLanguage = LanguageConfig.ENGLISH;
+                    }
                 }
                 if (options.hasKey("isCrop")) {
                     isCrop = options.getBoolean("isCrop");
                 }
+                if (options.hasKey("isMixSelect")) {
+                    isMixSelect = options.getBoolean("isMixSelect");
+                }
             }
 
-            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop, promise);
+            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop, isMixSelect, promise);
         } catch (Throwable e) {
             promise.reject("NATIVE_ERROR", e);
             Log.e(TAG, "openSelector: ", e);
         }
     }
 
-    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, int selectLanguage, boolean isCrop, Promise promise) {
+    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, int selectLanguage, boolean isCrop, boolean isMixSelect, Promise promise) {
         PictureSelector.create(reactContext.getCurrentActivity())
                 .openGallery(selectMimeType)
                 .setSelectorUIStyle(selectorStyle)
                 .setLanguage(selectLanguage)
                 .setSelectionMode(isSingleType ? SelectModeConfig.SINGLE : SelectModeConfig.MULTIPLE)
+                .isWithSelectVideoImage(isSingleType || isMixSelect)
                 .setImageEngine(GlideEngine.createGlideEngine())
 //                .setCropEngine(new ImageFileCropEngine())
                 .setCompressEngine(new ImageFileCompressEngine())
@@ -198,11 +207,11 @@ public class SimiSelectorModule {
         } else if (PictureMimeType.isHasVideo(mimeType)) {
             if (width == 0 || height == 0) {
                 MediaExtraInfo info = MediaUtils.getVideoSize(reactContext, path);
-                media.putInt("videoImageWidth", info.getWidth());
-                media.putInt("videoImageHeight", info.getHeight());
+                media.putInt("width", info.getWidth());
+                media.putInt("height", info.getHeight());
             } else {
-                media.putInt("videoImageWidth", width);
-                media.putInt("videoImageHeight", height);
+                media.putInt("width", width);
+                media.putInt("height", height);
             }
         }
     }
