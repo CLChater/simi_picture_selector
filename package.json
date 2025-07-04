@@ -8,6 +8,14 @@
   "homepage": "https://github.com/CLChater/simi_picture_selector.git",
   "scripts": {
   },
+   "react-native": {
+  "ios": "ios"
+  },
+   "files": [                    
+    "src",
+    "ios",
+    "simi_picture_selector.podspec"
+  ],
   "devDependencies": {
     "react": "18.2.0",
     "react-native": "0.72.6"
