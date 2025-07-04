@@ -22,11 +22,10 @@ Pod::Spec.new do |s|
   s.swift_version = "5.0"
 
 
-# s.pod_target_xcconfig = {
-#   'SWIFT_OBJC_BRIDGING_HEADER' => '${PODS_ROOT}/../../node_modules/simi_picture_selector/ios/simi_picture_selector-Bridging-Header.h',
-#   'DEFINES_MODULE' => 'YES',
-#   'CLANG_ENABLE_MODULES' => 'YES'
-# }
+s.pod_target_xcconfig = {
+  'SWIFT_OBJC_BRIDGING_HEADER' => 'ios/RNSimiSelector-Bridging-Header.h',
+  'DEFINES_MODULE' => 'YES'
+}
   s.frameworks = 'UIKit', 'Photos'
 
   s.dependency "React"
