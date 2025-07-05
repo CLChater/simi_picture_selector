@@ -15,17 +15,16 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => min_ios_version_supported }
 
   s.source_files = "ios/**/*.{h,m,swift}"
-  s.resources    = "ios/ZLPhotoBrowser.bundle"
+s.resource_bundles = {
+  'simi_picture_selectorResources' => ['simi_picture_selector/Assets/**/*']
+}
 
 
   s.requires_arc = true
   s.swift_version = "5.0"
 
 
-s.pod_target_xcconfig = {
-  'SWIFT_OBJC_BRIDGING_HEADER' => 'ios/RNSimiSelector-Bridging-Header.h',
-  'DEFINES_MODULE' => 'YES'
-}
+
   s.frameworks = 'UIKit', 'Photos'
 
   s.dependency "React"
