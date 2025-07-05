@@ -15,9 +15,8 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => min_ios_version_supported }
 
   s.source_files = "ios/**/*.{h,m,swift}"
-s.resource_bundles = {
-  'simi_picture_selectorResources' => ['simi_picture_selector/Assets/**/*']
-}
+
+  s.resource_bundles = {'simi_picture_selectorResources' => ['ios/Assets/**/*']}
 
 
   s.requires_arc = true
