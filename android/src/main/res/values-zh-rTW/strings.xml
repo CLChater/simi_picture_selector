@@ -75,4 +75,6 @@
     <string name="ps_select_audio_max_second">選擇錄音大於%1$d秒</string>
     <string name="ps_select_audio_min_second">選擇錄音小於%1$d秒</string>
     <string name="ps_select_no_support">不支援的選擇類型</string>
+    <string name="ps_select_image_size_limit">選擇圖片不能大於%1$s</string>
+    <string name="ps_select_video_size_limit">選擇影片不能大於%1$s</string>
 </resources>

@@ -8,6 +8,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -25,8 +26,10 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.simi.pictureselector.basic.PictureSelector;
 import com.simi.pictureselector.config.PictureMimeType;
+import com.simi.pictureselector.config.SelectLimitType;
 import com.simi.pictureselector.config.SelectMimeType;
 import com.simi.pictureselector.config.SelectModeConfig;
+import com.simi.pictureselector.config.SelectorConfig;
 import com.simi.pictureselector.engine.CompressFileEngine;
 import com.simi.pictureselector.engine.CropFileEngine;
 import com.simi.pictureselector.entity.LocalMedia;
@@ -34,6 +37,8 @@ import com.simi.pictureselector.entity.MediaExtraInfo;
 import com.simi.pictureselector.interfaces.OnKeyValueResultCallbackListener;
 import com.simi.pictureselector.interfaces.OnMediaEditInterceptListener;
 import com.simi.pictureselector.interfaces.OnResultCallbackListener;
+import com.simi.pictureselector.interfaces.OnSelectFilterListener;
+import com.simi.pictureselector.interfaces.OnSelectLimitTipsListener;
 import com.simi.pictureselector.interfaces.OnVideoThumbnailEventListener;
 import com.simi.pictureselector.language.LanguageConfig;
 import com.simi.pictureselector.style.BottomNavBarStyle;
@@ -46,6 +51,7 @@ import com.simi.pictureselector.utils.ImageLoaderUtils;
 import com.simi.pictureselector.utils.MediaUtils;
 import com.simi.pictureselector.utils.PictureFileUtils;
 import com.simi.pictureselector.utils.StyleUtils;
+import com.simi.pictureselector.utils.ToastUtils;
 import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.UCropImageEngine;
 
@@ -70,6 +76,9 @@ public class SimiSelectorModule {
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
     private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //zh 简体中文 en 英文
     private static final int DEFAULT_SELECT_MIME_TYPE = SelectMimeType.ofAll();//0: all , 1: image , 2: video , 3: audio
+    private static final String DEFAULT_SELECT_MIME_TYPE_LIST = "jpg,jepg,gif,png,mov,mp4";
+    private static final long DEFAULT_IMAGE_SIZE_LIMIT = 0;// 照片限制
+    private static final long DEFAULT_VIDEO_SIZE_LIMIT = 0;// 视频限制
     private final ReactApplicationContext reactContext;
 
     public SimiSelectorModule(ReactApplicationContext reactContext) {
@@ -103,6 +112,9 @@ public class SimiSelectorModule {
             int selectMimeType = DEFAULT_SELECT_MIME_TYPE;
             int selectLanguage = DEFAULT_LANGUAGE;
             boolean isMixSelect = DEFAULT_MIX_SELECT;
+            long imageSizeLimit = DEFAULT_IMAGE_SIZE_LIMIT;
+            long videoSizeLimit = DEFAULT_VIDEO_SIZE_LIMIT;
+
 
             if (options != null) {
                 if (options.hasKey("isSingle")) {
@@ -129,16 +141,25 @@ public class SimiSelectorModule {
                 if (options.hasKey("isMixSelect")) {
                     isMixSelect = options.getBoolean("isMixSelect");
                 }
+                if (options.hasKey("imageSizeLimit")) {
+                    imageSizeLimit = options.getInt("imageSizeLimit");
+                }
+                if (options.hasKey("videoSizeLimit")) {
+                    videoSizeLimit = options.getInt("videoSizeLimit");
+                }
             }
 
-            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop, isMixSelect, promise);
+            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop,
+                    isMixSelect, imageSizeLimit, videoSizeLimit, promise);
         } catch (Throwable e) {
             promise.reject("NATIVE_ERROR", e);
             Log.e(TAG, "openSelector: ", e);
         }
     }
 
-    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType, int selectLanguage, boolean isCrop, boolean isMixSelect, Promise promise) {
+    private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType,
+                              int selectLanguage, boolean isCrop, boolean isMixSelect, long imageSizeLimit,
+                              long videoSizeLimit, Promise promise) {
         PictureSelector.create(reactContext.getCurrentActivity())
                 .openGallery(selectMimeType)
                 .setSelectorUIStyle(selectorStyle)
@@ -155,8 +176,41 @@ public class SimiSelectorModule {
                 .isPageSyncAlbumCount(true)
                 .setMaxSelectNum(maxSelectNum)
                 .setMaxVideoSelectNum(maxSelectVideoNum)
+                .isWebp(false)
                 .setVideoThumbnailListener(getVideoThumbnailEventListener())
-                .setQueryFilterListener(media -> false)
+                .setSelectFilterListener(media -> {
+                    String mimeType = media.getMimeType();
+                    long mediaSize = media.getSize();
+                    if (PictureMimeType.isHasImage(mimeType) && imageSizeLimit != 0) {
+                        return mediaSize > imageSizeLimit;
+                    } else if (PictureMimeType.isHasVideo(mimeType) && imageSizeLimit != 0) {
+                        return mediaSize > videoSizeLimit;
+                    }
+                    return false;
+                })
+                .setSelectLimitTipsListener(new OnSelectLimitTipsListener() {
+                    @Override
+                    public boolean onSelectLimitTips(Context context, @Nullable LocalMedia media, SelectorConfig config, int limitType) {
+                        Log.d(TAG, "onSelectLimitTips: limitType = " + limitType);
+                        if (limitType == SelectLimitType.SELECT_NOT_SUPPORT_SELECT_LIMIT) {
+                            String mimeType = media != null ? media.getMimeType() : null;
+                            if (PictureMimeType.isHasImage(mimeType)) {
+                                ToastUtils.showToast(reactContext, reactContext.getString(R.string.ps_select_image_size_limit,
+                                        PictureFileUtils.formatFileSize(imageSizeLimit)));
+                            } else if (PictureMimeType.isHasVideo(mimeType)) {
+                                ToastUtils.showToast(reactContext, reactContext.getString(R.string.ps_select_video_size_limit,
+                                        PictureFileUtils.formatFileSize(videoSizeLimit)));
+                            }
+                            return true;
+                        }
+                        return false;
+                    }
+                })
+                .setQueryFilterListener(media -> {
+                    String[] split = media.getRealPath().split("\\.");
+                    String aCase = split[split.length - 1].toLowerCase();
+                    return !DEFAULT_SELECT_MIME_TYPE_LIST.contains(aCase);
+                })
                 .isDisplayCamera(false)
                 .forResult(new OnResultCallbackListener<LocalMedia>() {
                     @Override
@@ -349,9 +403,9 @@ public class SimiSelectorModule {
         }
     }
 
-    /**
-     * 自定义裁剪
-     */
+//    /**
+//     * 自定义裁剪
+//     */
 //    private class ImageFileCropEngine implements CropFileEngine {
 //
 //        @Override

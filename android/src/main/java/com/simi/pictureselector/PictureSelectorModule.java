@@ -38,9 +38,9 @@ public class PictureSelectorModule extends ReactContextBaseJavaModule {
 
     /**
      * 打开simi照片选择器
-     * 自定义选择单个模式、图片张数、视频个数
+     * 自定义选择参数
      *
-     * @param options {isSingle: false, maxImageNum: 6, int maxVideoNum: 1} 均为可选参数
+     * @param options 可选
      * @param promise 返回LocalMedia数组
      */
     @ReactMethod
