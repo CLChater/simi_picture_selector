@@ -16,6 +16,8 @@ selectMimeType：0-all 或 1-image 或 2-video 或 3-audio
 selectLanguage：zh-简体中文 或 en-英文
 isCrop：是否剪裁
 isMixSelect：是否混选视频、图片
+imageSizeLimit：图片大小限制
+videoSizeLimit：视频大小限制
 
 ```
 
