@@ -17,6 +17,8 @@ class SimiPictureSelector {
      * selectMimeType：0-all 或 1-image 或 2-video 或 3-audio
      * selectLanguage：0-简体中文 或 2-英文
      * isCrop：是否剪裁
+     * imageSizeLimit：图片大小限制
+     * videoSizeLimit：视频大小限制
      */
     static async openSelector(option: any): Promise<any> {
         if (SimiSelector) {
