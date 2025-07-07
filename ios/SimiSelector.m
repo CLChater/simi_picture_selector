@@ -124,18 +124,18 @@ RCT_EXPORT_METHOD(openSelector
                                           green:175.0 / 255.0
                                            blue:255.0 / 255.0
                                           alpha:1];
-    uiConfig.customImageNames = @[
-      @"zl_btn_selected", @"zl_btn_unselected", @"zl_btn_original_circle",
-      @"zl_btn_original_selected"
-    ];
-    uiConfig.customImageForKey_objc = @{
-      @"zl_btn_selected" : [UIImage imageNamed:@"zl_btn_selected"],
-      @"zl_btn_unselected" : [UIImage imageNamed:@"zl_btn_unselected"],
-      @"zl_btn_original_circle" :
-          [UIImage imageNamed:@"zl_btn_original_circle"],
-      @"zl_btn_original_selected" :
-          [UIImage imageNamed:@"zl_btn_original_selected"]
-    };
+    // uiConfig.customImageNames = @[
+    //   @"zl_btn_selected", @"zl_btn_unselected", @"zl_btn_original_circle",
+    //   @"zl_btn_original_selected"
+    // ];
+    // uiConfig.customImageForKey_objc = @{
+    //   @"zl_btn_selected" : [UIImage imageNamed:@"zl_btn_selected"],
+    //   @"zl_btn_unselected" : [UIImage imageNamed:@"zl_btn_unselected"],
+    //   @"zl_btn_original_circle" :
+    //       [UIImage imageNamed:@"zl_btn_original_circle"],
+    //   @"zl_btn_original_selected" :
+    //       [UIImage imageNamed:@"zl_btn_original_selected"]
+    // };
 
     ZLPhotoConfiguration *config = [ZLPhotoConfiguration default];
     config.allowSelectImage = YES;
