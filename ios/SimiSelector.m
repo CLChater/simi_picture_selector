@@ -11,10 +11,10 @@
 #import <React/RCTEventDispatcher.h>
 #import <ZLPhotoBrowser/ZLPhotoBrowser-Swift.h>
 
-#define DEFAULT_IS_SINGLE YES
+#define DEFAULT_IS_SINGLE NO
 #define DEFAULT_CROP NO
-#define DEFAULT_MAX_IMAGE_NUM 6
-#define DEFAULT_MAX_VIDEO_NUM 1
+#define DEFAULT_MAX_IMAGE_NUM 1
+#define DEFAULT_MAX_VIDEO_NUM 0
 #define DEFAULT_SELECT_MIME_TYPE 0
 #define DEFAULT_LANGUAGE ZLLanguageTypeChineseSimplified
 #define DEFAULT_MIX_SELECT NO
