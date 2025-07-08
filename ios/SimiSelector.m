@@ -6,7 +6,6 @@
 //
 
 #import "SimiSelector.h"
-#import "UIView+LCToast.h"
 #import <Photos/Photos.h>
 #import <React/RCTConvert.h>
 #import <React/RCTEventDispatcher.h>
@@ -147,18 +146,6 @@ RCT_EXPORT_METHOD(openSelector
                                           green:175.0 / 255.0
                                            blue:255.0 / 255.0
                                           alpha:1];
-    // uiConfig.customImageNames = @[
-    //   @"zl_btn_selected", @"zl_btn_unselected", @"zl_btn_original_circle",
-    //   @"zl_btn_original_selected"
-    // ];
-    // uiConfig.customImageForKey_objc = @{
-    //   @"zl_btn_selected" : [UIImage imageNamed:@"zl_btn_selected"],
-    //   @"zl_btn_unselected" : [UIImage imageNamed:@"zl_btn_unselected"],
-    //   @"zl_btn_original_circle" :
-    //       [UIImage imageNamed:@"zl_btn_original_circle"],
-    //   @"zl_btn_original_selected" :
-    //       [UIImage imageNamed:@"zl_btn_original_selected"]
-    // };
 
     ZLPhotoConfiguration *config = [ZLPhotoConfiguration default];
     config.allowSelectImage = YES;
@@ -179,8 +166,6 @@ RCT_EXPORT_METHOD(openSelector
     //            NSNumber *sizeStr = [SimiSelector
     //            fetchFormattedAssetSize:asset];
     //
-    //
-    //
     //            NSString *imageSizeLimitStr = [NSString
     //            stringWithFormat:@"%f",(float)imageSizeLimit/1024/1024];
     //            NSString *videoSizeLimitStr = [NSString
@@ -193,26 +178,10 @@ RCT_EXPORT_METHOD(openSelector
     //                : [NSString stringWithFormat:@"Select an image that cannot
     //                be lager than %@", imageSizeLimitStr]; if (imageSizeLimit
     //                > 0 && sizeStr.intValue > imageSizeLimit) {
-    ////                    dispatch_async(dispatch_get_main_queue(), ^{
-    ////
-    ////                    [rootVC.view lc_showToast:tip];
-    ////                    });
-    //
     //                    dispatch_async(dispatch_get_main_queue(), ^{
-    //                        UIAlertController *alert = [UIAlertController
-    //                                                    alertControllerWithTitle:@"提示"
-    //                                                    message:tip
-    //                                                    preferredStyle:UIAlertControllerStyleAlert];
-    //                        [alert addAction:[UIAlertAction
-    //                                          actionWithTitle:@"OK"
-    //                                          style:UIAlertActionStyleDefault
-    //                                          handler:^(UIAlertAction
-    //                                          *_Nonnull action) {
-    //                        }]];
-    //                        [rootVC presentViewController:alert animated:YES
-    //                        completion:nil];
-    //                      });
     //
+    //
+    //                    });
     //
     //                    return NO;
     //                }
@@ -226,7 +195,6 @@ RCT_EXPORT_METHOD(openSelector
     //                > 0 && sizeStr.intValue > videoSizeLimit) {
     //                    dispatch_async(dispatch_get_main_queue(), ^{
     //
-    //                    [rootVC.view lc_showToast:tip];
     //                    });
     //
     //                    return NO;
@@ -287,14 +255,121 @@ RCT_EXPORT_METHOD(openSelector
     [weakSelf.selectedMedias
         addObjectsFromArray:[NSMutableArray arrayWithArray:tempMedias]];
 
-    if (tempMedias.count >= 1) {
-      completion(weakSelf.selectedMedias);
-    } else if (tempMedias.count == 1 && isSingle) {
-      completion(weakSelf.selectedMedias.firstObject);
+    if (isSingle) {
+      if (tempMedias.count == 1) {
+        completion(weakSelf.selectedMedias.firstObject);
+      } else {
+        completion(@[]);
+      }
     } else {
-      completion(@[]);
+      if (tempMedias.count >= 1) {
+        completion(weakSelf.selectedMedias);
+      } else {
+        completion(@[]);
+      }
     }
   });
+}
+
+- (void)processAsset:(ZLResultModel *)result
+               group:(dispatch_group_t)group
+             toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
+
+  PHAsset *asset = result.asset;
+  NSString *mediaType = @"";
+  if (asset.mediaType == PHAssetMediaTypeImage) {
+    mediaType = @"image";
+  } else if (asset.mediaType == PHAssetMediaTypeVideo) {
+    mediaType = @"video";
+  } else if (asset.mediaType == PHAssetMediaTypeAudio) {
+    mediaType = @"audio";
+  } else {
+    mediaType = @"unknown";
+  }
+
+  NSMutableDictionary *media = [@{
+    @"mediaType" : mediaType,
+    @"width" : @(asset.pixelWidth),
+    @"height" : @(asset.pixelHeight)
+  } mutableCopy];
+
+  dispatch_group_enter(group);
+  [ZLPhotoManager
+      fetchAssetFilePathFor:asset
+                 completion:^(NSString *_Nullable path) {
+                   if (!path) {
+                     dispatch_group_leave(group);
+                     return;
+                   }
+
+                   // 根据类型做压缩
+                   if (asset.mediaType == PHAssetMediaTypeImage) {
+                     // 图片压缩
+                     dispatch_group_enter(group);
+                     [self compressImageAtPath:path
+                                    completion:^(NSString *compressedPath) {
+                                      media[@"uri"] = compressedPath ?: path;
+                                      dispatch_group_leave(group);
+                                    }];
+
+                   } else if (asset.mediaType == PHAssetMediaTypeVideo) {
+                     // 视频压缩
+                     dispatch_group_enter(group);
+                     [self
+                         compressVideoAtPath:path
+                                  completion:^(NSString *compressedPath) {
+                                    media[@"uri"] = compressedPath ?: path;
+                                    // 生成缩略图
+                                    dispatch_group_enter(group);
+                                    [self
+                                        generateVideoThumbnailForAsset:asset
+                                                                 group:group
+                                                            completion:^(
+                                                                NSString
+                                                                    *_Nullable thumbnailPath) {
+                                                              if (thumbnailPath) {
+                                                                media[@"videoIm"
+                                                                      @"age"] =
+                                                                    thumbnailPath;
+                                                              }
+                                                              dispatch_group_leave(
+                                                                  group);
+                                                            }];
+                                    dispatch_group_leave(group);
+                                  }];
+
+                   } else {
+                     // 其他类型直接使用原路径
+                     media[@"uri"] = path;
+                   }
+
+                   // 4. **在这里**再去读处理后文件的名称和大小
+                   //    注意：compressedPath 已经写到
+                   //    media[@"uri"]，我们直接用这个路径去构造资源
+                   dispatch_async(dispatch_get_global_queue(
+                                      DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+                                  ^{
+                                    NSString *finalPath = media[@"uri"];
+                                    // 4.1 文件名
+                                    media[@"fileName"] =
+                                        [finalPath lastPathComponent];
+                                    // 4.2 大小
+                                    NSError *err = nil;
+                                    NSDictionary *attrs =
+                                        [[NSFileManager defaultManager]
+                                            attributesOfItemAtPath:finalPath
+                                                             error:&err];
+                                    if (!err && attrs) {
+                                      media[@"size"] = attrs[NSFileSize];
+                                    }
+
+                                    // 5. 加入数组 & 最外层 leave
+                                    @synchronized(mediaArray) {
+                                      [mediaArray addObject:media];
+                                    }
+                                    dispatch_group_leave(group);
+                                  });
+                 }];
 }
 
 //- (void)processAsset:(ZLResultModel *)result
@@ -302,202 +377,78 @@ RCT_EXPORT_METHOD(openSelector
 //             toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
 //
 //    PHAsset *asset = result.asset;
-//    NSString *mediaType = @"";
-//    if (asset.mediaType == PHAssetMediaTypeImage) {
-//        mediaType = @"image";
-//    } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-//        mediaType = @"video";
-//    } else if (asset.mediaType == PHAssetMediaTypeAudio) {
-//        mediaType = @"audio";
-//    } else {
-//        mediaType = @"unknown";
+//    NSString *mediaType;
+//    switch (asset.mediaType) {
+//        case PHAssetMediaTypeImage: mediaType = @"image"; break;
+//        case PHAssetMediaTypeVideo: mediaType = @"video"; break;
+//        case PHAssetMediaTypeAudio: mediaType = @"audio"; break;
+//        default:                      mediaType = @"unknown"; break;
 //    }
 //
+//    // 基础字段（先不填 uri/fileName/size）
 //    NSMutableDictionary *media = [@{
-//        @"mediaType" : mediaType,
-//        @"width"     : @(asset.pixelWidth),
-//        @"height"    : @(asset.pixelHeight)
+//        @"mediaType": mediaType,
+//        @"width": @(asset.pixelWidth),
+//        @"height": @(asset.pixelHeight)
 //    } mutableCopy];
 //
+//    // 最外层 enter
 //    dispatch_group_enter(group);
 //    [ZLPhotoManager fetchAssetFilePathFor:asset completion:^(NSString *
-//    _Nullable path) {
-//        if (!path) {
+//    _Nullable origPath) {
+//        if (!origPath) {
 //            dispatch_group_leave(group);
 //            return;
 //        }
 //
-//        // 根据类型做压缩
+//        // 压缩后写入临时文件的回调
+//        void (^onCompressed)(NSString *finalPath) = ^(NSString *finalPath) {
+//            // 1. uri
+//            media[@"uri"] = finalPath;
+//            // 2. fileName
+//            media[@"fileName"] = [finalPath lastPathComponent];
+//            // 3. size
+//            NSError *attrErr = nil;
+//            NSDictionary *attrs = [[NSFileManager defaultManager]
+//                                    attributesOfItemAtPath:finalPath
+//                                                   error:&attrErr];
+//            if (!attrErr && attrs) {
+//                media[@"size"] = attrs[NSFileSize];
+//            }
+//            // 4. push 到数组
+//            @synchronized(mediaArray) {
+//                [mediaArray addObject:media];
+//            }
+//            // 5. leave
+//            dispatch_group_leave(group);
+//        };
+//
+//        // 根据类型压缩
 //        if (asset.mediaType == PHAssetMediaTypeImage) {
-//            // 图片压缩
 //            dispatch_group_enter(group);
-//            [self compressImageAtPath:path completion:^(NSString
+//            [self compressImageAtPath:origPath completion:^(NSString
 //            *compressedPath) {
-//                media[@"uri"] = compressedPath ?: path;
+//                NSString *p = compressedPath ?: origPath;
+//                onCompressed(p);
 //                dispatch_group_leave(group);
 //            }];
 //
 //        } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-//            // 视频压缩
 //            dispatch_group_enter(group);
-//            [self compressVideoAtPath:path completion:^(NSString
+//            [self compressVideoAtPath:origPath completion:^(NSString
 //            *compressedPath) {
-//                media[@"uri"] = compressedPath ?: path;
-//                // 生成缩略图
-//                dispatch_group_enter(group);
-//                [self generateVideoThumbnailForAsset:asset group:group
-//                completion:^(NSString * _Nullable thumbnailPath) {
-//                    if (thumbnailPath) {
-//                        media[@"videoImage"] = thumbnailPath;
-//                    }
-//                    dispatch_group_leave(group);
-//                }];
+//                NSString *p = compressedPath ?: origPath;
+//                // 你也可以在这里再生成缩略图...
+//                onCompressed(p);
 //                dispatch_group_leave(group);
 //            }];
 //
 //        } else {
-//            // 其他类型直接使用原路径
-//            media[@"uri"] = path;
+//            // 其他类型直接复用原始文件
+//            onCompressed(origPath);
 //        }
-//
-////        // 名称、大小等信息不变
-////        NSArray<PHAssetResource *> *resources = [PHAssetResource
-/// assetResourcesForAsset:asset]; /        PHAssetResource *resource =
-/// resources.firstObject; /        if (resource) { / media[@"fileName"] =
-/// resource.originalFilename; /        } /        NSNumber *sizeStr =
-///[SimiSelector fetchFormattedAssetSize:asset]; /        if (sizeStr) { /
-/// media[@"size"] = sizeStr; /        }
-////
-//////        // 等待所有压缩/缩略图任务完成后再 addObject
-//////        dispatch_group_notify(group,
-/// dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-//////            @synchronized(mediaArray) {
-//////                [mediaArray addObject:media];
-//////            }
-//////            // 最后释放最初的 enter
-//////            dispatch_group_leave(group);
-//////        });
-////
-////
-////        dispatch_async(dispatch_get_global_queue(
-//// DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), /                       ^{ /
-///@synchronized(mediaArray) { /                [mediaArray addObject:media]; /
-///} /        });
-////
-////        dispatch_group_leave(group);
-//
-//        // 4. **在这里**再去读处理后文件的名称和大小
-//             //    注意：compressedPath 已经写到
-//             media[@"uri"]，我们直接用这个路径去构造资源
-//             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,
-//             0), ^{
-//                 NSString *finalPath = media[@"uri"];
-//                 // 4.1 文件名
-//                 media[@"fileName"] = [finalPath lastPathComponent];
-//                 // 4.2 大小
-//                 NSError *err = nil;
-//                 NSDictionary *attrs = [[NSFileManager defaultManager]
-//                 attributesOfItemAtPath:finalPath error:&err]; if (!err &&
-//                 attrs) {
-//                     media[@"size"] = attrs[NSFileSize];
-//                 }
-//
-//                 // 5. 加入数组 & 最外层 leave
-//                 @synchronized(mediaArray) {
-//                     [mediaArray addObject:media];
-//                 }
-//                 dispatch_group_leave(group);
-//             });
 //    }];
 //}
-
-- (void)processAsset:(ZLResultModel *)result
-               group:(dispatch_group_t)group
-             toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
-
-  PHAsset *asset = result.asset;
-  NSString *mediaType;
-  switch (asset.mediaType) {
-  case PHAssetMediaTypeImage:
-    mediaType = @"image";
-    break;
-  case PHAssetMediaTypeVideo:
-    mediaType = @"video";
-    break;
-  case PHAssetMediaTypeAudio:
-    mediaType = @"audio";
-    break;
-  default:
-    mediaType = @"unknown";
-    break;
-  }
-
-  // 基础字段（先不填 uri/fileName/size）
-  NSMutableDictionary *media = [@{
-    @"mediaType" : mediaType,
-    @"width" : @(asset.pixelWidth),
-    @"height" : @(asset.pixelHeight)
-  } mutableCopy];
-
-  // 最外层 enter
-  dispatch_group_enter(group);
-  [ZLPhotoManager
-      fetchAssetFilePathFor:asset
-                 completion:^(NSString *_Nullable origPath) {
-                   if (!origPath) {
-                     dispatch_group_leave(group);
-                     return;
-                   }
-
-                   // 压缩后写入临时文件的回调
-                   void (^onCompressed)(NSString *finalPath) =
-                       ^(NSString *finalPath) {
-                         // 1. uri
-                         media[@"uri"] = finalPath;
-                         // 2. fileName
-                         media[@"fileName"] = [finalPath lastPathComponent];
-                         // 3. size
-                         NSError *attrErr = nil;
-                         NSDictionary *attrs = [[NSFileManager defaultManager]
-                             attributesOfItemAtPath:finalPath
-                                              error:&attrErr];
-                         if (!attrErr && attrs) {
-                           media[@"size"] = attrs[NSFileSize];
-                         }
-                         // 4. push 到数组
-                         @synchronized(mediaArray) {
-                           [mediaArray addObject:media];
-                         }
-                         // 5. leave
-                         dispatch_group_leave(group);
-                       };
-
-                   // 根据类型压缩
-                   if (asset.mediaType == PHAssetMediaTypeImage) {
-                     dispatch_group_enter(group);
-                     [self compressImageAtPath:origPath
-                                    completion:^(NSString *compressedPath) {
-                                      NSString *p = compressedPath ?: origPath;
-                                      onCompressed(p);
-                                      dispatch_group_leave(group);
-                                    }];
-
-                   } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-                     dispatch_group_enter(group);
-                     [self compressVideoAtPath:origPath
-                                    completion:^(NSString *compressedPath) {
-                                      NSString *p = compressedPath ?: origPath;
-                                      // 你也可以在这里再生成缩略图...
-                                      onCompressed(p);
-                                      dispatch_group_leave(group);
-                                    }];
-
-                   } else {
-                     // 其他类型直接复用原始文件
-                     onCompressed(origPath);
-                   }
-                 }];
-}
 
 #pragma mark - 图片压缩
 
