@@ -13,8 +13,8 @@
 
 #define DEFAULT_IS_SINGLE NO
 #define DEFAULT_CROP NO
-#define DEFAULT_MAX_IMAGE_NUM 1
-#define DEFAULT_MAX_VIDEO_NUM 0
+#define DEFAULT_MAX_IMAGE_NUM 6
+#define DEFAULT_MAX_VIDEO_NUM 1
 #define DEFAULT_SELECT_MIME_TYPE 0
 #define DEFAULT_LANGUAGE ZLLanguageTypeChineseSimplified
 #define DEFAULT_MIX_SELECT NO
@@ -73,17 +73,23 @@ RCT_EXPORT_METHOD(openSelector
     }
 
     int maxCount = maxImageNum + maxVideoNum;
-    if (isSingle) {
-      maxCount = 1;
-    }
 
     BOOL canSelectVideo = NO;
     if (selectMimeType == 0 || selectMimeType == 2) {
       canSelectVideo = YES;
     }
 
+    if (isSingle) {
+      maxCount = 1;
+    }
+
+    if (!isMixSelect) {
+      maxCount = maxImageNum;
+    }
+
     // 调用封装逻辑
     [self openPhotoPickerAllowMixSelect:isMixSelect
+                               isSingle:isSingle
                          canSelectVideo:canSelectVideo
                                maxCount:maxCount
                           maxVideoCount:maxVideoNum
@@ -98,6 +104,7 @@ RCT_EXPORT_METHOD(openSelector
 }
 
 - (void)openPhotoPickerAllowMixSelect:(BOOL)allowMixSelect
+                             isSingle:(BOOL)isSingle
                        canSelectVideo:(BOOL)canSelectVideo
                              maxCount:(int)maxCount
                         maxVideoCount:(int)maxVideoCount
@@ -150,12 +157,44 @@ RCT_EXPORT_METHOD(openSelector
     config.allowTakePhotoInLibrary = NO;
     config.allowEditImage = allowEditImage;
 
+    config.canSelectAsset = ^BOOL(PHAsset *_Nonnull asset) {
+      // 只对视频做限制
+      if (asset.mediaType == PHAssetMediaTypeVideo) {
+        // 异步拿大小
+        //              [asset getFileSize:^(int64_t size) {
+        //                  double sizeInMB = (double)size / 1024.0 / 1024.0;
+        //                  if (sizeInMB > 100.0) {
+        //                      dispatch_async(dispatch_get_main_queue(), ^{
+        //                          // 内置吐司
+        //                          [ZLPhotoBrowser
+        //                          showAlertWithMessage:@"视频不能大于100MB"];
+        //                          // 或者用 HUD： [ZLProgressHUD
+        //                          showText:@"视频不能大于100MB"];
+        //                      });
+        //                  } else {
+        //                      //
+        //                      如果需要选中小于100MB的视频，再次手动触发选中逻辑：
+        //                      // [[NSNotificationCenter defaultCenter]
+        //                      postNotificationName:ZLPhotoBrowserSelectedAssetNotification
+        //                      object:asset];
+        //                  }
+        //              }];
+        //
+        NSString *sizeStr = [SimiSelector fetchFormattedAssetSize:asset];
+
+        // 返回 NO，先不让它走默认的“选中”流程，等异步检测完再手动触发
+        return NO;
+      }
+      return YES;
+    };
+
     ZLPhotoPicker *picker = [[ZLPhotoPicker alloc] init];
     __weak typeof(self) weakSelf = self;
 
     picker.selectImageBlock =
         ^(NSArray<ZLResultModel *> *_Nonnull results, BOOL isOriginal) {
           [weakSelf handlePickedResults:results
+                               isSingle:isSingle
                              completion:^(id result) {
                                resolve(result);
                              }];
@@ -170,6 +209,7 @@ RCT_EXPORT_METHOD(openSelector
 }
 
 - (void)handlePickedResults:(NSArray<ZLResultModel *> *)results
+                   isSingle:(BOOL)isSingle
                  completion:(void (^)(id result))completion {
   NSMutableArray<UIImage *> *selectedImages = [NSMutableArray array];
   NSMutableArray<PHAsset *> *selectedAssets = [NSMutableArray array];
@@ -197,9 +237,9 @@ RCT_EXPORT_METHOD(openSelector
     [weakSelf.selectedMedias
         addObjectsFromArray:[NSMutableArray arrayWithArray:tempMedias]];
 
-    if (tempMedias.count > 1) {
+    if (tempMedias.count >= 1) {
       completion(weakSelf.selectedMedias);
-    } else if (tempMedias.count == 1) {
+    } else if (tempMedias.count == 1 && isSingle) {
       completion(weakSelf.selectedMedias.firstObject);
     } else {
       completion(@[]);
