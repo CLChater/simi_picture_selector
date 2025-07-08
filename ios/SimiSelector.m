@@ -6,6 +6,7 @@
 //
 
 #import "SimiSelector.h"
+#import "UIView+LCToast.h"
 #import <Photos/Photos.h>
 #import <React/RCTConvert.h>
 #import <React/RCTEventDispatcher.h>
@@ -161,50 +162,56 @@ RCT_EXPORT_METHOD(openSelector
     config.allowEditImage = allowEditImage;
     config.showSelectBtnWhenSingleSelect = YES;
 
-    //        config.canSelectAsset = ^BOOL(PHAsset * _Nonnull asset) {
-    //
-    //            NSNumber *sizeStr = [SimiSelector
-    //            fetchFormattedAssetSize:asset];
-    //
-    //            NSString *imageSizeLimitStr = [NSString
-    //            stringWithFormat:@"%f",(float)imageSizeLimit/1024/1024];
-    //            NSString *videoSizeLimitStr = [NSString
-    //            stringWithFormat:@"%f",(float)videoSizeLimit/1024/1024];
-    //
-    //            if (asset.mediaType == PHAssetMediaTypeImage) {
-    //                NSString *tip = (language ==
-    //                ZLLanguageTypeChineseSimplified) ? [NSString
-    //                stringWithFormat:@"选择图片不能大于%@", imageSizeLimitStr]
-    //                : [NSString stringWithFormat:@"Select an image that cannot
-    //                be lager than %@", imageSizeLimitStr]; if (imageSizeLimit
-    //                > 0 && sizeStr.intValue > imageSizeLimit) {
-    //                    dispatch_async(dispatch_get_main_queue(), ^{
-    //
-    //
-    //                    });
-    //
-    //                    return NO;
-    //                }
-    //                return YES;
-    //            }else if (asset.mediaType == PHAssetMediaTypeVideo) {
-    //                NSString *tip = (language ==
-    //                ZLLanguageTypeChineseSimplified) ? [NSString
-    //                stringWithFormat:@"选择视频不能大于%@", videoSizeLimitStr]
-    //                : [NSString stringWithFormat:@"Select an video that cannot
-    //                be lager than %@", videoSizeLimitStr]; if (videoSizeLimit
-    //                > 0 && sizeStr.intValue > videoSizeLimit) {
-    //                    dispatch_async(dispatch_get_main_queue(), ^{
-    //
-    //                    });
-    //
-    //                    return NO;
-    //                }
-    //                return YES;
-    //            }else {
-    //                return YES;
-    //            }
-    //            return YES;
-    //        };
+    config.canSelectAsset = ^BOOL(PHAsset *_Nonnull asset) {
+      NSNumber *sizeStr = [SimiSelector fetchFormattedAssetSize:asset];
+
+      NSString *imageSizeLimitStr = [NSString
+          stringWithFormat:@"%.2f", (float)imageSizeLimit / 1024 / 1024];
+      NSString *videoSizeLimitStr = [NSString
+          stringWithFormat:@"%.2f", (float)videoSizeLimit / 1024 / 1024];
+
+      if (asset.mediaType == PHAssetMediaTypeImage) {
+        NSString *tip =
+            (language == ZLLanguageTypeChineseSimplified)
+                ? [NSString stringWithFormat:@"选择图片不能大于%@ MB",
+                                             imageSizeLimitStr]
+                : [NSString
+                      stringWithFormat:
+                          @"Select an image that cannot be lager than %@ MB",
+                          imageSizeLimitStr];
+        if (imageSizeLimit > 0 && sizeStr.intValue > imageSizeLimit) {
+
+          dispatch_async(dispatch_get_main_queue(), ^{
+            [[UIApplication sharedApplication].delegate.window
+                lc_showToast:tip];
+          });
+
+          return NO;
+        }
+        return YES;
+      } else if (asset.mediaType == PHAssetMediaTypeVideo) {
+        NSString *tip =
+            (language == ZLLanguageTypeChineseSimplified)
+                ? [NSString stringWithFormat:@"选择视频不能大于%@ MB",
+                                             videoSizeLimitStr]
+                : [NSString
+                      stringWithFormat:
+                          @"Select an video that cannot be lager than %@ MB",
+                          videoSizeLimitStr];
+        if (videoSizeLimit > 0 && sizeStr.intValue > videoSizeLimit) {
+
+          dispatch_async(dispatch_get_main_queue(), ^{
+            [[UIApplication sharedApplication].delegate.window
+                lc_showToast:tip];
+          });
+          return NO;
+        }
+        return YES;
+      } else {
+        return YES;
+      }
+      return YES;
+    };
 
     ZLPhotoPicker *picker = [[ZLPhotoPicker alloc] init];
     __weak typeof(self) weakSelf = self;
@@ -297,210 +304,55 @@ RCT_EXPORT_METHOD(openSelector
   [ZLPhotoManager
       fetchAssetFilePathFor:asset
                  completion:^(NSString *_Nullable path) {
-                   if (!path) {
-                     dispatch_group_leave(group);
-                     return;
-                   }
-
-                   // 根据类型做压缩
-                   if (asset.mediaType == PHAssetMediaTypeImage) {
-                     // 图片压缩
-                     dispatch_group_enter(group);
-                     [self compressImageAtPath:path
-                                    completion:^(NSString *compressedPath) {
-                                      media[@"uri"] = compressedPath ?: path;
-                                      dispatch_group_leave(group);
-                                    }];
-
-                   } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-                     // 视频压缩
-                     dispatch_group_enter(group);
-                     [self
-                         compressVideoAtPath:path
-                                  completion:^(NSString *compressedPath) {
-                                    media[@"uri"] = compressedPath ?: path;
-                                    // 生成缩略图
-                                    dispatch_group_enter(group);
-                                    [self
-                                        generateVideoThumbnailForAsset:asset
-                                                                 group:group
-                                                            completion:^(
-                                                                NSString
-                                                                    *_Nullable thumbnailPath) {
-                                                              if (thumbnailPath) {
-                                                                media[@"videoIm"
-                                                                      @"age"] =
-                                                                    thumbnailPath;
-                                                              }
-                                                              dispatch_group_leave(
-                                                                  group);
-                                                            }];
-                                    dispatch_group_leave(group);
-                                  }];
-
-                   } else {
-                     // 其他类型直接使用原路径
+                   if (path) {
                      media[@"uri"] = path;
                    }
 
-                   // 4. **在这里**再去读处理后文件的名称和大小
-                   //    注意：compressedPath 已经写到
-                   //    media[@"uri"]，我们直接用这个路径去构造资源
+                   // 名称
+                   NSArray<PHAssetResource *> *resources =
+                       [PHAssetResource assetResourcesForAsset:result.asset];
+                   PHAssetResource *resource = resources.firstObject;
+                   if (resource) {
+                     // 文件名
+                     media[@"fileName"] = resource.originalFilename;
+                     NSLog(@"--------name：%@", media[@"fileName"]);
+                   }
+
+                   // 大小
+                   NSNumber *sizeStr =
+                       [SimiSelector fetchFormattedAssetSize:asset];
+                   if (sizeStr) {
+                     media[@"size"] = sizeStr;
+                     NSLog(@"--------size：%@", media[@"size"]);
+                   }
+
+                   // 视频处理
+                   if (asset.mediaType == PHAssetMediaTypeVideo) {
+                     dispatch_group_enter(group);
+                     [self
+                         generateVideoThumbnailForAsset:asset
+                                                  group:group
+                                             completion:^(
+                                                 NSString
+                                                     *_Nullable thumbnailPath) {
+                                               if (thumbnailPath) {
+                                                 media[@"videoImage"] =
+                                                     thumbnailPath;
+                                               }
+                                               dispatch_group_leave(group);
+                                             }];
+                   }
+
                    dispatch_async(dispatch_get_global_queue(
                                       DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
                                   ^{
-                                    NSString *finalPath = media[@"uri"];
-                                    // 4.1 文件名
-                                    media[@"fileName"] =
-                                        [finalPath lastPathComponent];
-                                    // 4.2 大小
-                                    NSError *err = nil;
-                                    NSDictionary *attrs =
-                                        [[NSFileManager defaultManager]
-                                            attributesOfItemAtPath:finalPath
-                                                             error:&err];
-                                    if (!err && attrs) {
-                                      media[@"size"] = attrs[NSFileSize];
-                                    }
-
-                                    // 5. 加入数组 & 最外层 leave
                                     @synchronized(mediaArray) {
                                       [mediaArray addObject:media];
                                     }
-                                    dispatch_group_leave(group);
                                   });
+
+                   dispatch_group_leave(group);
                  }];
-}
-
-//- (void)processAsset:(ZLResultModel *)result
-//               group:(dispatch_group_t)group
-//             toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
-//
-//    PHAsset *asset = result.asset;
-//    NSString *mediaType;
-//    switch (asset.mediaType) {
-//        case PHAssetMediaTypeImage: mediaType = @"image"; break;
-//        case PHAssetMediaTypeVideo: mediaType = @"video"; break;
-//        case PHAssetMediaTypeAudio: mediaType = @"audio"; break;
-//        default:                      mediaType = @"unknown"; break;
-//    }
-//
-//    // 基础字段（先不填 uri/fileName/size）
-//    NSMutableDictionary *media = [@{
-//        @"mediaType": mediaType,
-//        @"width": @(asset.pixelWidth),
-//        @"height": @(asset.pixelHeight)
-//    } mutableCopy];
-//
-//    // 最外层 enter
-//    dispatch_group_enter(group);
-//    [ZLPhotoManager fetchAssetFilePathFor:asset completion:^(NSString *
-//    _Nullable origPath) {
-//        if (!origPath) {
-//            dispatch_group_leave(group);
-//            return;
-//        }
-//
-//        // 压缩后写入临时文件的回调
-//        void (^onCompressed)(NSString *finalPath) = ^(NSString *finalPath) {
-//            // 1. uri
-//            media[@"uri"] = finalPath;
-//            // 2. fileName
-//            media[@"fileName"] = [finalPath lastPathComponent];
-//            // 3. size
-//            NSError *attrErr = nil;
-//            NSDictionary *attrs = [[NSFileManager defaultManager]
-//                                    attributesOfItemAtPath:finalPath
-//                                                   error:&attrErr];
-//            if (!attrErr && attrs) {
-//                media[@"size"] = attrs[NSFileSize];
-//            }
-//            // 4. push 到数组
-//            @synchronized(mediaArray) {
-//                [mediaArray addObject:media];
-//            }
-//            // 5. leave
-//            dispatch_group_leave(group);
-//        };
-//
-//        // 根据类型压缩
-//        if (asset.mediaType == PHAssetMediaTypeImage) {
-//            dispatch_group_enter(group);
-//            [self compressImageAtPath:origPath completion:^(NSString
-//            *compressedPath) {
-//                NSString *p = compressedPath ?: origPath;
-//                onCompressed(p);
-//                dispatch_group_leave(group);
-//            }];
-//
-//        } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-//            dispatch_group_enter(group);
-//            [self compressVideoAtPath:origPath completion:^(NSString
-//            *compressedPath) {
-//                NSString *p = compressedPath ?: origPath;
-//                // 你也可以在这里再生成缩略图...
-//                onCompressed(p);
-//                dispatch_group_leave(group);
-//            }];
-//
-//        } else {
-//            // 其他类型直接复用原始文件
-//            onCompressed(origPath);
-//        }
-//    }];
-//}
-
-#pragma mark - 图片压缩
-
-- (void)compressImageAtPath:(NSString *)originalPath
-                 completion:(void (^)(NSString *compressedPath))completion {
-  dispatch_async(
-      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        UIImage *image = [UIImage imageWithContentsOfFile:originalPath];
-        if (!image) {
-          completion(nil);
-          return;
-        }
-        // 按 0.7 质量压缩
-        NSData *jpegData = UIImageJPEGRepresentation(image, 0.7);
-        NSString *tmp = [NSTemporaryDirectory()
-            stringByAppendingPathComponent:
-                [NSString stringWithFormat:@"img_%@.jpg",
-                                           [[NSUUID UUID] UUIDString]]];
-        if ([jpegData writeToFile:tmp atomically:YES]) {
-          completion(tmp);
-        } else {
-          completion(nil);
-        }
-      });
-}
-
-#pragma mark - 视频压缩
-
-- (void)compressVideoAtPath:(NSString *)inputPath
-                 completion:(void (^)(NSString *compressedPath))completion {
-  NSURL *sourceURL = [NSURL fileURLWithPath:inputPath];
-  AVURLAsset *asset = [AVURLAsset URLAssetWithURL:sourceURL options:nil];
-  AVAssetExportSession *exporter = [[AVAssetExportSession alloc]
-      initWithAsset:asset
-         presetName:AVAssetExportPresetHighestQuality];
-  NSString *outputPath = [NSTemporaryDirectory()
-      stringByAppendingPathComponent:[NSString
-                                         stringWithFormat:@"vid_%@.mp4",
-                                                          [[NSUUID UUID]
-                                                              UUIDString]]];
-  exporter.outputURL = [NSURL fileURLWithPath:outputPath];
-  exporter.outputFileType = AVFileTypeMPEG4;
-  exporter.shouldOptimizeForNetworkUse = YES;
-
-  [exporter exportAsynchronouslyWithCompletionHandler:^{
-    if (exporter.status == AVAssetExportSessionStatusCompleted) {
-      completion(outputPath);
-    } else {
-      NSLog(@"Video compression failed: %@", exporter.error);
-      completion(nil);
-    }
-  }];
 }
 
 //- (void)processAsset:(ZLResultModel *)result
@@ -526,58 +378,146 @@ RCT_EXPORT_METHOD(openSelector
 //    } mutableCopy];
 //
 //    dispatch_group_enter(group);
-//    [ZLPhotoManager
-//     fetchAssetFilePathFor:asset
-//     completion:^(NSString *_Nullable path) {
+//    [ZLPhotoManager fetchAssetFilePathFor:asset completion:^(NSString
+//    *_Nullable path) {
 //        if (path) {
 //            media[@"uri"] = path;
 //        }
 //
-//        // 名称
-//        NSArray<PHAssetResource *> *resources =
-//        [PHAssetResource assetResourcesForAsset:result.asset];
-//        PHAssetResource *resource = resources.firstObject;
-//        if (resource) {
-//            // 文件名
+//        // 文件名
+//        NSArray<PHAssetResource *> *resources = [PHAssetResource
+//        assetResourcesForAsset:result.asset]; PHAssetResource *resource =
+//        resources.firstObject; if (resource) {
 //            media[@"fileName"] = resource.originalFilename;
 //            NSLog(@"--------name：%@", media[@"fileName"]);
 //        }
 //
 //        // 大小
-//        NSNumber *sizeStr =
-//        [SimiSelector fetchFormattedAssetSize:asset];
+//        NSNumber *sizeStr = [SimiSelector fetchFormattedAssetSize:asset];
 //        if (sizeStr) {
 //            media[@"size"] = sizeStr;
 //            NSLog(@"--------size：%@", media[@"size"]);
 //        }
 //
-//        // 视频处理
-//        if (asset.mediaType == PHAssetMediaTypeVideo) {
+//        /// ✅ 图片压缩
+//        if (asset.mediaType == PHAssetMediaTypeImage) {
 //            dispatch_group_enter(group);
-//            [self
-//             generateVideoThumbnailForAsset:asset
-//             group:group
-//             completion:^(
-//                          NSString
-//                          *_Nullable thumbnailPath) {
-//                              if (thumbnailPath) {
-//                                  media[@"videoImage"] =
-//                                  thumbnailPath;
-//                              }
-//                              dispatch_group_leave(group);
-//                          }];
+//            PHImageRequestOptions *options = [[PHImageRequestOptions alloc]
+//            init]; options.resizeMode = PHImageRequestOptionsResizeModeFast;
+//            options.deliveryMode =
+//            PHImageRequestOptionsDeliveryModeHighQualityFormat;
+//            options.networkAccessAllowed = YES;
+//
+//            CGSize targetSize = CGSizeMake(asset.pixelWidth,
+//            asset.pixelHeight);
+//            [[PHImageManager defaultManager] requestImageForAsset:asset
+//                                                        targetSize:targetSize
+//                                                       contentMode:PHImageContentModeDefault
+//                                                           options:options
+//                                                     resultHandler:^(UIImage *
+//                                                     _Nullable image,
+//                                                     NSDictionary * _Nullable
+//                                                     info) {
+//                if (image) {
+//                    NSData *jpegData = UIImageJPEGRepresentation(image, 0.8);
+//                    if (jpegData) {
+//                        NSString *fileName = [NSString
+//                        stringWithFormat:@"%@.jpg", [[NSUUID UUID]
+//                        UUIDString]]; NSString *tempPath =
+//                        [NSTemporaryDirectory()
+//                        stringByAppendingPathComponent:fileName]; if
+//                        ([jpegData writeToFile:tempPath atomically:YES]) {
+//                            if (tempPath) {
+//                                media[@"uri"] = tempPath;
+//
+//                                // ✅ 用压缩文件获取文件名
+//                                media[@"fileName"] = [tempPath
+//                                lastPathComponent];
+//
+//                                // ✅ 获取文件大小
+//                                NSDictionary *attrs = [[NSFileManager
+//                                defaultManager]
+//                                attributesOfItemAtPath:tempPath error:nil];
+//                                NSNumber *fileSize = attrs[NSFileSize];
+//                                if (fileSize) {
+//                                    media[@"size"] = fileSize;
+//                                }
+//
+//                                NSLog(@"压缩图片成功：%@, size: %@", tempPath,
+//                                fileSize);
+//
+//                            }
+//
+//                            NSLog(@"压缩图片成功：%@", tempPath);
+//                        }
+//                    }
+//                }
+//                dispatch_group_leave(group);
+//            }];
 //        }
 //
-//        dispatch_async(dispatch_get_global_queue(
-//                                                 DISPATCH_QUEUE_PRIORITY_DEFAULT,
-//                                                 0),
-//                       ^{
+//        /// ✅ 视频压缩导出
+//        if (asset.mediaType == PHAssetMediaTypeVideo) {
+//            dispatch_group_enter(group);
+//            AVAsset *avAsset = [AVAsset assetWithURL:[NSURL
+//            URLWithString:media[@"uri"]]]; AVAssetExportSession *exportSession
+//            = [[AVAssetExportSession alloc] initWithAsset:avAsset
+//                                                                                    presetName:AVAssetExportPresetMediumQuality];
+//            NSString *fileName = [NSString stringWithFormat:@"%@.mp4",
+//            [[NSUUID UUID] UUIDString]]; NSString *outputPath =
+//            [NSTemporaryDirectory() stringByAppendingPathComponent:fileName];
+//            NSURL *outputURL = [NSURL fileURLWithPath:outputPath];
+//
+//            exportSession.outputURL = outputURL;
+//            exportSession.outputFileType = AVFileTypeMPEG4;
+//            exportSession.shouldOptimizeForNetworkUse = YES;
+//
+//            [exportSession exportAsynchronouslyWithCompletionHandler:^{
+//                if (exportSession.status ==
+//                AVAssetExportSessionStatusCompleted) {
+//
+//                    media[@"uri"] = outputPath;
+//
+//                    // ✅ 用压缩文件获取文件名
+//                    media[@"fileName"] = [outputPath lastPathComponent];
+//
+//                    // ✅ 获取文件大小
+//                    NSDictionary *attrs = [[NSFileManager defaultManager]
+//                    attributesOfItemAtPath:outputPath error:nil]; NSNumber
+//                    *fileSize = attrs[NSFileSize]; if (fileSize) {
+//                        media[@"size"] = fileSize;
+//                    }
+//
+//                    NSLog(@"导出视频成功：%@", outputPath);
+//
+//                } else {
+//                    NSLog(@"导出视频失败：%@", exportSession.error);
+//                }
+//                dispatch_group_leave(group);
+//            }];
+//        }
+//
+//        /// ✅ 视频缩略图处理
+//        if (asset.mediaType == PHAssetMediaTypeVideo) {
+//            dispatch_group_enter(group);
+//            [self generateVideoThumbnailForAsset:asset group:group
+//            completion:^(NSString *_Nullable thumbnailPath) {
+//                if (thumbnailPath) {
+//                    media[@"videoImage"] = thumbnailPath;
+//                }
+//                dispatch_group_leave(group);
+//            }];
+//        }
+//
+//        /// ✅ 最后加入数组
+//        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,
+//        0), ^{
 //            @synchronized(mediaArray) {
 //                [mediaArray addObject:media];
 //            }
 //        });
 //
-//        dispatch_group_leave(group);
+//        dispatch_group_leave(group); // fetchAssetFilePath
 //    }];
 //}
 
