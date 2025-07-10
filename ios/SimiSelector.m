@@ -278,84 +278,6 @@ RCT_EXPORT_METHOD(openSelector
   });
 }
 
-// - (void)processAsset:(ZLResultModel *)result
-//                group:(dispatch_group_t)group
-//              toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
-
-//   PHAsset *asset = result.asset;
-//   NSString *mediaType = @"";
-//   if (asset.mediaType == PHAssetMediaTypeImage) {
-//     mediaType = @"image";
-//   } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-//     mediaType = @"video";
-//   } else if (asset.mediaType == PHAssetMediaTypeAudio) {
-//     mediaType = @"audio";
-//   } else {
-//     mediaType = @"unknown";
-//   }
-
-//   NSMutableDictionary *media = [@{
-//     @"mediaType" : mediaType,
-//     @"width" : @(asset.pixelWidth),
-//     @"height" : @(asset.pixelHeight)
-//   } mutableCopy];
-
-//   dispatch_group_enter(group);
-//   [ZLPhotoManager
-//       fetchAssetFilePathFor:asset
-//                  completion:^(NSString *_Nullable path) {
-//                    if (path) {
-//                      media[@"uri"] = path;
-//                    }
-
-//                    // 名称
-//                    NSArray<PHAssetResource *> *resources =
-//                        [PHAssetResource assetResourcesForAsset:result.asset];
-//                    PHAssetResource *resource = resources.firstObject;
-//                    if (resource) {
-//                      // 文件名
-//                      media[@"fileName"] = resource.originalFilename;
-//                      NSLog(@"--------name：%@", media[@"fileName"]);
-//                    }
-
-//                    // 大小
-//                    NSNumber *sizeStr =
-//                        [SimiSelector fetchFormattedAssetSize:asset];
-//                    if (sizeStr) {
-//                      media[@"size"] = sizeStr;
-//                      NSLog(@"--------size：%@", media[@"size"]);
-//                    }
-
-//                    // 视频处理
-//                    if (asset.mediaType == PHAssetMediaTypeVideo) {
-//                      dispatch_group_enter(group);
-//                      [self
-//                          generateVideoThumbnailForAsset:asset
-//                                                   group:group
-//                                              completion:^(
-//                                                  NSString
-//                                                      *_Nullable
-//                                                      thumbnailPath) {
-//                                                if (thumbnailPath) {
-//                                                  media[@"videoImage"] =
-//                                                      thumbnailPath;
-//                                                }
-//                                                dispatch_group_leave(group);
-//                                              }];
-//                    }
-
-//                    dispatch_async(dispatch_get_global_queue(
-//                                       DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-//                                   ^{
-//                                     @synchronized(mediaArray) {
-//                                       [mediaArray addObject:media];
-//                                     }
-//                                   });
-
-//                    dispatch_group_leave(group);
-//                  }];
-// }
-
 - (void)processAsset:(ZLResultModel *)result
                group:(dispatch_group_t)group
              toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
@@ -509,12 +431,8 @@ RCT_EXPORT_METHOD(openSelector
                        } else {
                          NSLog(@"导出视频失败：%@", exportSession.error);
                        }
-                       dispatch_group_leave(group);
                      }];
-                   }
 
-                   /// ✅ 视频缩略图处理
-                   if (asset.mediaType == PHAssetMediaTypeVideo) {
                      dispatch_group_enter(group);
                      [self
                          generateVideoThumbnailForAsset:asset
@@ -542,6 +460,84 @@ RCT_EXPORT_METHOD(openSelector
                    dispatch_group_leave(group); // fetchAssetFilePath
                  }];
 }
+
+// - (void)processAsset:(ZLResultModel *)result
+//                group:(dispatch_group_t)group
+//              toArray:(NSMutableArray<NSDictionary *> *)mediaArray {
+
+//   PHAsset *asset = result.asset;
+//   NSString *mediaType = @"";
+//   if (asset.mediaType == PHAssetMediaTypeImage) {
+//     mediaType = @"image";
+//   } else if (asset.mediaType == PHAssetMediaTypeVideo) {
+//     mediaType = @"video";
+//   } else if (asset.mediaType == PHAssetMediaTypeAudio) {
+//     mediaType = @"audio";
+//   } else {
+//     mediaType = @"unknown";
+//   }
+
+//   NSMutableDictionary *media = [@{
+//     @"mediaType" : mediaType,
+//     @"width" : @(asset.pixelWidth),
+//     @"height" : @(asset.pixelHeight)
+//   } mutableCopy];
+
+//   dispatch_group_enter(group);
+//   [ZLPhotoManager
+//       fetchAssetFilePathFor:asset
+//                  completion:^(NSString *_Nullable path) {
+//                    if (path) {
+//                      media[@"uri"] = path;
+//                    }
+
+//                    // 名称
+//                    NSArray<PHAssetResource *> *resources =
+//                        [PHAssetResource assetResourcesForAsset:result.asset];
+//                    PHAssetResource *resource = resources.firstObject;
+//                    if (resource) {
+//                      // 文件名
+//                      media[@"fileName"] = resource.originalFilename;
+//                      NSLog(@"--------name：%@", media[@"fileName"]);
+//                    }
+
+//                    // 大小
+//                    NSNumber *sizeStr =
+//                        [SimiSelector fetchFormattedAssetSize:asset];
+//                    if (sizeStr) {
+//                      media[@"size"] = sizeStr;
+//                      NSLog(@"--------size：%@", media[@"size"]);
+//                    }
+
+//                    // 视频处理
+//                    if (asset.mediaType == PHAssetMediaTypeVideo) {
+//                      dispatch_group_enter(group);
+//                      [self
+//                          generateVideoThumbnailForAsset:asset
+//                                                   group:group
+//                                              completion:^(
+//                                                  NSString
+//                                                      *_Nullable
+//                                                      thumbnailPath) {
+//                                                if (thumbnailPath) {
+//                                                  media[@"videoImage"] =
+//                                                      thumbnailPath;
+//                                                }
+//                                                dispatch_group_leave(group);
+//                                              }];
+//                    }
+
+//                    dispatch_async(dispatch_get_global_queue(
+//                                       DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+//                                   ^{
+//                                     @synchronized(mediaArray) {
+//                                       [mediaArray addObject:media];
+//                                     }
+//                                   });
+
+//                    dispatch_group_leave(group);
+//                  }];
+// }
 
 + (nullable NSNumber *)fetchFormattedAssetSize:(PHAsset *)asset {
   PHAssetResource *resource =
