@@ -177,6 +177,7 @@ public class SimiSelectorModule {
                 .setMaxSelectNum(maxSelectNum)
                 .setMaxVideoSelectNum(maxSelectVideoNum)
                 .isWebp(false)
+                .isMaxSelectEnabledMask(true)
                 .setVideoThumbnailListener(getVideoThumbnailEventListener())
                 .setSelectFilterListener(media -> {
                     String mimeType = media.getMimeType();
