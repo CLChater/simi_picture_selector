@@ -95,15 +95,14 @@ public class PreviewGalleryAdapter extends RecyclerView.Adapter<PreviewGalleryAd
     public void removeGalleryData(LocalMedia currentMedia) {
         int currentPosition = getCurrentPosition(currentMedia);
         if (currentPosition != RecyclerView.NO_POSITION) {
-        // 取消选中的蒙层
-//            if (isBottomPreview) {
-//                LocalMedia media = mData.get(currentPosition);
-//                media.setGalleryEnabledMask(true);
-//                notifyItemChanged(currentPosition);
-//            } else {
+           if (isBottomPreview) {
+               LocalMedia media = mData.get(currentPosition);
+               media.setGalleryEnabledMask(true);
+               notifyItemChanged(currentPosition);
+           } else {
                 mData.remove(currentPosition);
                 notifyItemRemoved(currentPosition);
-//            }
+           }
         }
     }
 
