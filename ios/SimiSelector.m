@@ -161,6 +161,7 @@ RCT_EXPORT_METHOD(openSelector
     config.allowTakePhotoInLibrary = NO;
     config.allowEditImage = allowEditImage;
     config.showSelectBtnWhenSingleSelect = YES;
+    config.maxSelectVideoDuration = 10800;
 
     config.canSelectAsset = ^BOOL(PHAsset *_Nonnull asset) {
       NSNumber *sizeStr = [SimiSelector fetchFormattedAssetSize:asset];
