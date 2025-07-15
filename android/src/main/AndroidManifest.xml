@@ -30,7 +30,6 @@
         <activity
             android:name=".basic.PictureSelectorSupporterActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            android:launchMode="standard"
             android:theme="@style/Base.Theme.NoActionBar">
 
         </activity>
@@ -38,7 +37,6 @@
         <activity
             android:name=".basic.PictureSelectorTransparentActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            android:launchMode="standard"
             android:theme="@style/Picture.Theme.Translucent">
 
         </activity>
