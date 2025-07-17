@@ -14,6 +14,8 @@ import com.simi.pictureselector.config.InjectResourceSource;
 import com.simi.pictureselector.config.PictureMimeType;
 import com.simi.pictureselector.config.SelectorConfig;
 import com.simi.pictureselector.entity.LocalMedia;
+import com.simi.pictureselector.permissions.PermissionChecker;
+
 import java.util.ArrayList;
 
 
@@ -40,7 +42,14 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
      */
     public final static int ADAPTER_TYPE_AUDIO = 4;
 
+    /**
+     * 添加部分权限选择媒体
+     */
+    public final static int ADAPTER_TYPE_ADD_MEDIA = 5;
+
     private boolean isDisplayCamera;
+
+    private boolean isDisplayAddSelect;
 
     private ArrayList<LocalMedia> mData = new ArrayList<>();
 
@@ -74,6 +83,23 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
         isDisplayCamera = displayCamera;
     }
 
+    public boolean isDisplayAddSelect() {
+        return isDisplayAddSelect;
+    }
+
+    public void setDisplayAddSelect(boolean displayAddSelect) {
+        if (PermissionChecker.hasReadMediaVisualUserSelected(mContext)) {
+            isDisplayAddSelect = displayAddSelect;
+        } else {
+            isDisplayAddSelect = false;
+        }
+        if (displayAddSelect) {
+            if (PermissionChecker.hasNoReadMediaPermission(mContext)) {
+                isDisplayAddSelect = true;
+            }
+        }
+    }
+
     public ArrayList<LocalMedia> getData() {
         return mData;
     }
@@ -86,8 +112,11 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
     public int getItemViewType(int position) {
         if (isDisplayCamera && position == 0) {
             return ADAPTER_TYPE_CAMERA;
+        } else if (isDisplayAddSelect && position == getItemCount() - 1) {
+            return ADAPTER_TYPE_ADD_MEDIA;
         } else {
             int adapterPosition = isDisplayCamera ? position - 1 : position;
+            // 这里不再需要处理 adapterPosition 越界，前面判断已剔除添加按钮位置
             String mimeType = mData.get(adapterPosition).getMimeType();
             if (PictureMimeType.isHasVideo(mimeType)) {
                 return ADAPTER_TYPE_VIDEO;
@@ -97,6 +126,7 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
             return ADAPTER_TYPE_IMAGE;
         }
     }
+
 
     @NonNull
     @Override
@@ -115,6 +145,8 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
         switch (viewType) {
             case ADAPTER_TYPE_CAMERA:
                 return R.layout.ps_item_grid_camera;
+            case ADAPTER_TYPE_ADD_MEDIA:
+                return R.layout.ps_item_grid_add_select; // 你需要新增这个布局资源
             case ADAPTER_TYPE_VIDEO:
                 layoutResourceId = InjectResourceSource.getLayoutResource(mContext, InjectResourceSource.MAIN_ITEM_VIDEO_LAYOUT_RESOURCE, mConfig);
                 return layoutResourceId != InjectResourceSource.DEFAULT_LAYOUT_RESOURCE ? layoutResourceId : R.layout.ps_item_grid_video;
@@ -127,9 +159,11 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
         }
     }
 
+
     @Override
     public void onBindViewHolder(final BaseRecyclerMediaHolder holder, final int position) {
-        if (getItemViewType(position) == ADAPTER_TYPE_CAMERA) {
+        int viewType = getItemViewType(position);
+        if (viewType == ADAPTER_TYPE_CAMERA) {
             holder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -138,8 +172,20 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
                     }
                 }
             });
+        } else if (viewType == ADAPTER_TYPE_ADD_MEDIA) {
+            holder.itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (listener != null) {
+                        listener.openAddSelectClick();
+                    }
+                }
+            });
         } else {
             int adapterPosition = isDisplayCamera ? position - 1 : position;
+            if (isDisplayAddSelect) {
+                adapterPosition = adapterPosition >= mData.size() ? mData.size() - 1 : adapterPosition;
+            }
             LocalMedia media = mData.get(adapterPosition);
             holder.bindData(media, adapterPosition);
             holder.setOnItemClickListener(listener);
@@ -149,7 +195,14 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
 
     @Override
     public int getItemCount() {
-        return isDisplayCamera ? mData.size() + 1 : mData.size();
+        int count = mData.size();
+        if (isDisplayCamera) {
+            count++;
+        }
+        if (isDisplayAddSelect) {
+            count++;
+        }
+        return count;
     }
 
 
@@ -165,6 +218,11 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<BaseRecyclerMe
          * 拍照
          */
         void openCameraClick();
+
+        /**
+         * 打开Android13以上权限图片选择
+         */
+        void openAddSelectClick();
 
         /**
          * 列表item点击事件

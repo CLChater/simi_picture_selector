@@ -47,6 +47,8 @@ public class BaseRecyclerMediaHolder extends RecyclerView.ViewHolder {
         switch (viewType) {
             case PictureImageGridAdapter.ADAPTER_TYPE_CAMERA:
                 return new CameraViewHolder(itemView);
+            case PictureImageGridAdapter.ADAPTER_TYPE_ADD_MEDIA:
+                return new AddSelectViewHolder(itemView);
             case PictureImageGridAdapter.ADAPTER_TYPE_VIDEO:
                 return new VideoViewHolder(itemView, config);
             case PictureImageGridAdapter.ADAPTER_TYPE_AUDIO:

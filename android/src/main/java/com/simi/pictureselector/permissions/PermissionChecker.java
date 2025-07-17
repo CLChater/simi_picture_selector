@@ -5,11 +5,15 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
+import android.provider.MediaStore;
+
 
 import com.simi.pictureselector.basic.PictureCommonFragment;
 import com.simi.pictureselector.config.SelectMimeType;
@@ -91,7 +95,7 @@ public class PermissionChecker {
         }
     }
 
-    public void onRequestPermissionsResult(Context context,String[] permissions,int[] grantResults, PermissionResultCallback action) {
+    public void onRequestPermissionsResult(Context context, String[] permissions, int[] grantResults, PermissionResultCallback action) {
         Activity activity = (Activity) context;
         for (String permission : permissions) {
             boolean should = ActivityCompat.shouldShowRequestPermissionRationale(activity, permission);
@@ -200,5 +204,38 @@ public class PermissionChecker {
      */
     public static boolean isCheckSelfPermission(Context context, String[] permissions) {
         return PermissionChecker.checkSelfPermission(context, permissions);
+    }
+
+    /**
+     * 是否为访问用户选择的媒体（图片+视频）权限
+     */
+    public static boolean hasReadMediaVisualUserSelected(Context context) {
+        if (SdkVersionUtils.isUPSIDE_DOWN_CAKE()) { // API 34+
+            boolean hasFullAccess = isCheckReadImages(context)
+                    || isCheckReadVideo(context);
+
+            boolean hasUserSelectedAccess = isCheckSelfPermission(context, new String[]{PermissionConfig.READ_MEDIA_VISUAL_USER_SELECTED});
+
+            if (hasFullAccess) {
+                return false;
+            } else return hasUserSelectedAccess;
+        } else {
+            // 低版本没有这个权限
+            return false;
+        }
+    }
+
+    public static boolean hasNoReadMediaPermission(Context context) {
+        if (SdkVersionUtils.isUPSIDE_DOWN_CAKE()) { // API 34+
+            boolean hasFullAccess = isCheckReadImages(context)
+                    || isCheckReadVideo(context);
+
+            boolean hasUserSelectedAccess = isCheckSelfPermission(context, new String[]{PermissionConfig.READ_MEDIA_VISUAL_USER_SELECTED});
+
+            return !hasFullAccess && !hasUserSelectedAccess;
+        } else {
+            // 低版本没有这个权限
+            return false;
+        }
     }
 }

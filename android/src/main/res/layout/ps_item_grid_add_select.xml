@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.simi.pictureselector.widget.SquareRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="5dp"
+    android:layout_marginTop="5dp"
+    android:background="@drawable/bg_iv_picture_grey_rounded"
+    android:clipToOutline="true"
+    android:gravity="center_vertical"
+    android:orientation="vertical">
+
+    <ImageView
+        android:id="@+id/tvAddSelect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:src="@drawable/ps_add_select" />
+
+</com.simi.pictureselector.widget.SquareRelativeLayout>

@@ -126,6 +126,11 @@ public class PictureSelectorPreviewFragment extends PictureCommonFragment {
     protected boolean isShowCamera;
 
     /**
+     * 是否显示添加媒体按钮
+     */
+    protected boolean isShowAddSelect;
+
+    /**
      * 是否外部预览进来
      */
     protected boolean isExternalPreview;
@@ -304,6 +309,7 @@ public class PictureSelectorPreviewFragment extends PictureCommonFragment {
             mBucketId = savedInstanceState.getLong(PictureConfig.EXTRA_CURRENT_BUCKET_ID, -1);
             curPosition = savedInstanceState.getInt(PictureConfig.EXTRA_PREVIEW_CURRENT_POSITION, curPosition);
             isShowCamera = savedInstanceState.getBoolean(PictureConfig.EXTRA_DISPLAY_CAMERA, isShowCamera);
+            isShowAddSelect = savedInstanceState.getBoolean(PictureConfig.EXTRA_DISPLAY_ADD_MEDIA, isShowAddSelect);
             totalNum = savedInstanceState.getInt(PictureConfig.EXTRA_PREVIEW_CURRENT_ALBUM_TOTAL, totalNum);
             isExternalPreview = savedInstanceState.getBoolean(PictureConfig.EXTRA_EXTERNAL_PREVIEW, isExternalPreview);
             isDisplayDelete = savedInstanceState.getBoolean(PictureConfig.EXTRA_EXTERNAL_PREVIEW_DISPLAY_DELETE, isDisplayDelete);
@@ -489,6 +495,7 @@ public class PictureSelectorPreviewFragment extends PictureCommonFragment {
         outState.putBoolean(PictureConfig.EXTRA_EXTERNAL_PREVIEW, isExternalPreview);
         outState.putBoolean(PictureConfig.EXTRA_EXTERNAL_PREVIEW_DISPLAY_DELETE, isDisplayDelete);
         outState.putBoolean(PictureConfig.EXTRA_DISPLAY_CAMERA, isShowCamera);
+        outState.putBoolean(PictureConfig.EXTRA_DISPLAY_ADD_MEDIA, isShowAddSelect);
         outState.putBoolean(PictureConfig.EXTRA_BOTTOM_PREVIEW, isInternalBottomPreview);
         outState.putString(PictureConfig.EXTRA_CURRENT_ALBUM_NAME, currentAlbum);
         selectorConfig.addSelectedPreviewResult(mData);

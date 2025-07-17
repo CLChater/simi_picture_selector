@@ -27,6 +27,8 @@ public final class PictureConfig {
 
     public final static String EXTRA_DISPLAY_CAMERA = KEY + ".display_camera";
 
+    public final static String EXTRA_DISPLAY_ADD_MEDIA = KEY + ".display_add_media";
+
     public final static String EXTRA_BOTTOM_PREVIEW = KEY + ".bottom_preview";
 
     public final static String EXTRA_CURRENT_ALBUM_NAME = KEY + ".current_album_name";

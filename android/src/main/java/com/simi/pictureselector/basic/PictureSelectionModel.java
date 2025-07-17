@@ -927,6 +927,15 @@ public final class PictureSelectionModel {
     }
 
     /**
+     * @param isDisplayAddSelect Whether to open add media button
+     *
+     */
+    public PictureSelectionModel isDisplayAddMedia(boolean isDisplayAddSelect) {
+        selectionConfig.isDisplayAddSelect = isDisplayAddSelect;
+        return this;
+    }
+
+    /**
      * @param outPutCameraDir Camera output path
      *                        <p>Audio mode setting is not supported</p>
      *

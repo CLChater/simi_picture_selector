@@ -107,6 +107,7 @@ public class PictureSelectorFragment extends PictureCommonFragment
      */
     private boolean isMemoryRecycling;
     private boolean isDisplayCamera;
+    private boolean isDisplayAddSelect;
 
     private PictureImageGridAdapter mAdapter;
 
@@ -225,6 +226,7 @@ public class PictureSelectorFragment extends PictureCommonFragment
         }
         if (mAdapter != null) {
             outState.putBoolean(PictureConfig.EXTRA_DISPLAY_CAMERA, mAdapter.isDisplayCamera());
+            outState.putBoolean(PictureConfig.EXTRA_DISPLAY_ADD_MEDIA, mAdapter.isDisplayAddSelect());
             selectorConfig.addDataSource(mAdapter.getData());
         }
         if (albumListPopWindow != null) {
@@ -268,8 +270,10 @@ public class PictureSelectorFragment extends PictureCommonFragment
             mPage = savedInstanceState.getInt(PictureConfig.EXTRA_CURRENT_PAGE, mPage);
             currentPosition = savedInstanceState.getInt(PictureConfig.EXTRA_PREVIEW_CURRENT_POSITION, currentPosition);
             isDisplayCamera = savedInstanceState.getBoolean(PictureConfig.EXTRA_DISPLAY_CAMERA, selectorConfig.isDisplayCamera);
+            isDisplayAddSelect = savedInstanceState.getBoolean(PictureConfig.EXTRA_DISPLAY_ADD_MEDIA, selectorConfig.isDisplayAddSelect);
         } else {
             isDisplayCamera = selectorConfig.isDisplayCamera;
+            isDisplayAddSelect = selectorConfig.isDisplayAddSelect;
         }
     }
 
@@ -388,8 +392,9 @@ public class PictureSelectorFragment extends PictureCommonFragment
         addAlbumPopWindowAction();
     }
 
-    private void recoverSaveInstanceData(){
+    private void recoverSaveInstanceData() {
         mAdapter.setDisplayCamera(isDisplayCamera);
+        mAdapter.setDisplayAddSelect(isDisplayAddSelect);
         setEnterAnimationDuration(0);
         if (selectorConfig.isOnlySandboxDir) {
             handleInAppDirAllMedia(selectorConfig.currentLocalMediaFolder);
@@ -426,6 +431,7 @@ public class PictureSelectorFragment extends PictureCommonFragment
 
     private void requestLoadData() {
         mAdapter.setDisplayCamera(isDisplayCamera);
+        mAdapter.setDisplayAddSelect(isDisplayAddSelect);
         if (PermissionChecker.isCheckReadStorage(selectorConfig.chooseMode, getContext())) {
             beginLoadData();
         } else {
@@ -481,7 +487,7 @@ public class PictureSelectorFragment extends PictureCommonFragment
 
     @Override
     public void handlePermissionSettingResult(String[] permissions) {
-        if (permissions == null){
+        if (permissions == null) {
             return;
         }
         onPermissionExplainEvent(false, null);
@@ -519,6 +525,7 @@ public class PictureSelectorFragment extends PictureCommonFragment
             public void onItemClick(int position, LocalMediaFolder curFolder) {
                 isDisplayCamera = selectorConfig.isDisplayCamera && curFolder.getBucketId() == PictureConfig.ALL;
                 mAdapter.setDisplayCamera(isDisplayCamera);
+                mAdapter.setDisplayAddSelect(isDisplayAddSelect);
                 titleBar.setTitle(curFolder.getFolderName());
                 LocalMediaFolder lastFolder = selectorConfig.currentLocalMediaFolder;
                 long lastBucketId = lastFolder.getBucketId();
@@ -800,6 +807,7 @@ public class PictureSelectorFragment extends PictureCommonFragment
         }
         mAdapter = new PictureImageGridAdapter(getContext(), selectorConfig);
         mAdapter.setDisplayCamera(isDisplayCamera);
+        mAdapter.setDisplayAddSelect(isDisplayAddSelect);
         switch (selectorConfig.animationMode) {
             case AnimationType.ALPHA_IN_ANIMATION:
                 mRecycler.setAdapter(new AlphaInAnimationAdapter(mAdapter));
@@ -818,6 +826,15 @@ public class PictureSelectorFragment extends PictureCommonFragment
 
     private void addRecyclerAction() {
         mAdapter.setOnItemClickListener(new PictureImageGridAdapter.OnItemClickListener() {
+
+            @Override
+            public void openAddSelectClick() {
+                if (DoubleUtils.isFastDoubleClick()) {
+                    return;
+                }
+                //TODO 判断权限打开系统相册选择器
+                requestLoadData();
+            }
 
             @Override
             public void openCameraClick() {

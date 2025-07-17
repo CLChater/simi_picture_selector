@@ -82,6 +82,7 @@ public final class SelectorConfig {
     public int language;
     public int defaultLanguage;
     public boolean isDisplayCamera;
+    public boolean isDisplayAddSelect;
     public boolean isGif;
     public boolean isWebp;
     public boolean isBmp;
@@ -177,6 +178,7 @@ public final class SelectorConfig {
         isCameraAroundState = false;
         isWithVideoImage = false;
         isDisplayCamera = true;
+        isDisplayAddSelect = false;
         isGif = false;
         isWebp = true;
         isBmp = true;

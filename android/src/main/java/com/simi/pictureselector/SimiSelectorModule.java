@@ -176,6 +176,8 @@ public class SimiSelectorModule {
                 .isPageSyncAlbumCount(true)
                 .setMaxSelectNum(maxSelectNum)
                 .setMaxVideoSelectNum(maxSelectVideoNum)
+                .isDisplayCamera(false)
+                .isDisplayAddMedia(true)
                 .isWebp(false)
                 .isMaxSelectEnabledMask(true)
                 .setVideoThumbnailListener(getVideoThumbnailEventListener())
@@ -212,7 +214,6 @@ public class SimiSelectorModule {
                     String aCase = split[split.length - 1].toLowerCase();
                     return !DEFAULT_SELECT_MIME_TYPE_LIST.contains(aCase);
                 })
-                .isDisplayCamera(false)
                 .forResult(new OnResultCallbackListener<LocalMedia>() {
                     @Override
                     public void onResult(ArrayList<LocalMedia> result) {
