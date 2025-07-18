@@ -76,7 +76,7 @@ public class SimiSelectorModule {
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
     private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //zh 简体中文 en 英文
     private static final int DEFAULT_SELECT_MIME_TYPE = SelectMimeType.ofAll();//0: all , 1: image , 2: video , 3: audio
-    private static final String DEFAULT_SELECT_MIME_TYPE_LIST = "jpg,jepg,gif,png,mov,mp4";
+    private static final String DEFAULT_SELECT_MIME_TYPE_LIST = "jpg,jpeg,gif,png,mov,mp4";
     private static final long DEFAULT_IMAGE_SIZE_LIMIT = 0;// 照片限制
     private static final long DEFAULT_VIDEO_SIZE_LIMIT = 0;// 视频限制
     private final ReactApplicationContext reactContext;
