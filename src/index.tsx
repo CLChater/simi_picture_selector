@@ -24,7 +24,12 @@ class SimiPictureSelector {
     static async openSelector(option: any): Promise<any> {
         if (SimiSelector) {
             try {
-                return await SimiSelector.openSelector(option);
+                const result = await SimiSelector.openSelector(option);
+                if (Array.isArray(result) && result.length > 0) {
+                    return result;
+                } else {
+                    return Promise.reject('No data returned.');
+                }
             } catch (error) {
                 console.error('Failed to init from SimiSelector:', error);
                 throw error;
