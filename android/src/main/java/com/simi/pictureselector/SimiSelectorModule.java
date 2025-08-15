@@ -52,6 +52,7 @@ import com.simi.pictureselector.utils.MediaUtils;
 import com.simi.pictureselector.utils.PictureFileUtils;
 import com.simi.pictureselector.utils.StyleUtils;
 import com.simi.pictureselector.utils.ToastUtils;
+import com.simi.pictureselector.utils.FileUtil;
 import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.UCropImageEngine;
 
@@ -186,7 +187,7 @@ public class SimiSelectorModule {
                     long mediaSize = media.getSize();
                     if (PictureMimeType.isHasImage(mimeType) && imageSizeLimit != 0) {
                         return mediaSize > imageSizeLimit;
-                    } else if (PictureMimeType.isHasVideo(mimeType) && imageSizeLimit != 0) {
+                    } else if (PictureMimeType.isHasVideo(mimeType) && videoSizeLimit != 0) {
                         return mediaSize > videoSizeLimit;
                     }
                     return false;
@@ -233,6 +234,10 @@ public class SimiSelectorModule {
                                 String realPath = localMedia.getRealPath();
                                 String compressPath = localMedia.getCompressPath();
                                 String uri = original ? realPath : (compressPath != null && !compressPath.isEmpty()) ? compressPath : realPath;
+                                if (!original) {
+                                    long fileSize = FileUtil.getFileSize(uri);
+                                    media.putDouble("size", fileSize);
+                                }
                                 media.putString("uri", "file://" + uri);
                             }
 
@@ -240,10 +245,6 @@ public class SimiSelectorModule {
 
                             if (PictureMimeType.isHasVideo(mimeType)) {
                                 media.putString("videoImage", localMedia.getVideoThumbnailPath());
-                            }
-                            if (isSingleType) {
-                                promise.resolve(media);
-                                return;
                             }
                             medias.pushMap(media);
                         }
