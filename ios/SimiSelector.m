@@ -310,7 +310,7 @@ RCT_EXPORT_METHOD(openSelector
 
     if (isSingle) {
       if (tempMedias.count == 1) {
-        completion(weakSelf.selectedMedias.firstObject);
+        completion(weakSelf.selectedMedias);
       } else {
         completion(@[]);
       }
