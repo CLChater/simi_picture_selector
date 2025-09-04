@@ -1,6 +1,5 @@
 package com.simi.pictureselector;
 
-import static java.security.AccessController.getContext;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -8,7 +7,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -47,12 +45,12 @@ import com.simi.pictureselector.style.SelectMainStyle;
 import com.simi.pictureselector.style.TitleBarStyle;
 import com.simi.pictureselector.utils.DateUtils;
 import com.simi.pictureselector.utils.DensityUtil;
+import com.simi.pictureselector.utils.FileUtil;
 import com.simi.pictureselector.utils.ImageLoaderUtils;
 import com.simi.pictureselector.utils.MediaUtils;
 import com.simi.pictureselector.utils.PictureFileUtils;
 import com.simi.pictureselector.utils.StyleUtils;
 import com.simi.pictureselector.utils.ToastUtils;
-import com.simi.pictureselector.utils.FileUtil;
 import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.UCropImageEngine;
 
@@ -71,7 +69,8 @@ public class SimiSelectorModule {
 
     private final PictureSelectorStyle selectorStyle = new PictureSelectorStyle();
     private static final boolean DEFAULT_IS_SINGLE = false;
-    private static final boolean DEFAULT_CROP = false;
+    private static final boolean DEFAULT_CROP = false;//图片编辑
+    private static final boolean DEFAULT_MUST_CROP = false;//是否必须剪裁
     private static final boolean DEFAULT_MIX_SELECT = false;//视频、图片混选
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
@@ -108,6 +107,7 @@ public class SimiSelectorModule {
         try {
             boolean isSingle = DEFAULT_IS_SINGLE;
             boolean isCrop = DEFAULT_CROP;
+            boolean mustCrop = DEFAULT_MUST_CROP;
             int maxImageNum = DEFAULT_MAX_IMAGE_NUM;
             int maxVideoNum = DEFAULT_MAX_VIDEO_NUM;
             int selectMimeType = DEFAULT_SELECT_MIME_TYPE;
@@ -143,6 +143,9 @@ public class SimiSelectorModule {
                 if (options.hasKey("isCrop")) {
                     isCrop = options.getBoolean("isCrop");
                 }
+                if (options.hasKey("mustCrop")) {
+                    mustCrop = options.getBoolean("mustCrop");
+                }
                 if (options.hasKey("isMixSelect")) {
                     isMixSelect = options.getBoolean("isMixSelect");
                 }
@@ -154,7 +157,7 @@ public class SimiSelectorModule {
                 }
             }
 
-            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop,
+            openSelector(isSingle, maxImageNum, maxVideoNum, selectMimeType, selectLanguage, isCrop, mustCrop,
                     isMixSelect, imageSizeLimit, videoSizeLimit, promise);
         } catch (Throwable e) {
             promise.reject("NATIVE_ERROR", e);
@@ -163,7 +166,7 @@ public class SimiSelectorModule {
     }
 
     private void openSelector(boolean isSingleType, int maxSelectNum, int maxSelectVideoNum, int selectMimeType,
-                              int selectLanguage, boolean isCrop, boolean isMixSelect, long imageSizeLimit,
+                              int selectLanguage, boolean isCrop, boolean mustCrop, boolean isMixSelect, long imageSizeLimit,
                               long videoSizeLimit, Promise promise) {
         PictureSelector.create(reactContext.getCurrentActivity())
                 .openGallery(selectMimeType)
@@ -172,7 +175,7 @@ public class SimiSelectorModule {
                 .setSelectionMode(isSingleType ? SelectModeConfig.SINGLE : SelectModeConfig.MULTIPLE)
                 .isWithSelectVideoImage(isSingleType || isMixSelect)
                 .setImageEngine(GlideEngine.createGlideEngine())
-//                .setCropEngine(new ImageFileCropEngine())
+                .setCropEngine(mustCrop ? new ImageFileCropEngine() : null)
                 .setCompressEngine(new ImageFileCompressEngine())
                 .setEditMediaInterceptListener(isCrop ? new MeOnMediaEditInterceptListener(getSandboxPath(), buildOptions()) : null)
                 .setImageSpanCount(3)
@@ -417,47 +420,47 @@ public class SimiSelectorModule {
         }
     }
 
-//    /**
-//     * 自定义裁剪
-//     */
-//    private class ImageFileCropEngine implements CropFileEngine {
-//
-//        @Override
-//        public void onStartCrop(Fragment fragment, Uri srcUri, Uri destinationUri, ArrayList<String> dataSource, int requestCode) {
-//            UCrop.Options options = buildOptions();
-//            UCrop uCrop = UCrop.of(srcUri, destinationUri, dataSource);
-//            uCrop.withOptions(options);
-//            uCrop.setImageEngine(new UCropImageEngine() {
-//                @Override
-//                public void loadImage(Context context, String url, ImageView imageView) {
-//                    if (!ImageLoaderUtils.assertValidRequest(context)) {
-//                        return;
-//                    }
-//                    Glide.with(context).load(url).override(180, 180).into(imageView);
-//                }
-//
-//                @Override
-//                public void loadImage(Context context, Uri url, int maxWidth, int maxHeight, OnCallbackListener<Bitmap> call) {
-//                    Glide.with(context).asBitmap().load(url).override(maxWidth, maxHeight).into(new CustomTarget<Bitmap>() {
-//                        @Override
-//                        public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
-//                            if (call != null) {
-//                                call.onCall(resource);
-//                            }
-//                        }
-//
-//                        @Override
-//                        public void onLoadCleared(@Nullable Drawable placeholder) {
-//                            if (call != null) {
-//                                call.onCall(null);
-//                            }
-//                        }
-//                    });
-//                }
-//            });
-//            uCrop.start(fragment.requireActivity(), fragment, requestCode);
-//        }
-//    }
+    /**
+     * 自定义裁剪
+     */
+    private class ImageFileCropEngine implements CropFileEngine {
+
+        @Override
+        public void onStartCrop(Fragment fragment, Uri srcUri, Uri destinationUri, ArrayList<String> dataSource, int requestCode) {
+            UCrop.Options options = buildOptions();
+            UCrop uCrop = UCrop.of(srcUri, destinationUri, dataSource);
+            uCrop.withOptions(options);
+            uCrop.setImageEngine(new UCropImageEngine() {
+                @Override
+                public void loadImage(Context context, String url, ImageView imageView) {
+                    if (!ImageLoaderUtils.assertValidRequest(context)) {
+                        return;
+                    }
+                    Glide.with(context).load(url).override(180, 180).into(imageView);
+                }
+
+                @Override
+                public void loadImage(Context context, Uri url, int maxWidth, int maxHeight, OnCallbackListener<Bitmap> call) {
+                    Glide.with(context).asBitmap().load(url).override(maxWidth, maxHeight).into(new CustomTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                            if (call != null) {
+                                call.onCall(resource);
+                            }
+                        }
+
+                        @Override
+                        public void onLoadCleared(@Nullable Drawable placeholder) {
+                            if (call != null) {
+                                call.onCall(null);
+                            }
+                        }
+                    });
+                }
+            });
+            uCrop.start(fragment.requireActivity(), fragment, requestCode);
+        }
+    }
 
     /**
      * 配制UCrop，可根据需求自我扩展
@@ -473,6 +476,7 @@ public class SimiSelectorModule {
         options.setCircleDimmedLayer(false);
         options.isCropDragSmoothToCenter(false);
         options.isForbidCropGifWebp(false);
+        options.withAspectRatio(1, 1);
         options.isForbidSkipMultipleCrop(true);
         options.setMaxScaleMultiplier(100);
         int color_blue = ContextCompat.getColor(reactContext, R.color.ps_color_10AFFF);
