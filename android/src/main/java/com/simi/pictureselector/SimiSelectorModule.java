@@ -75,7 +75,7 @@ public class SimiSelectorModule {
     private static final boolean DEFAULT_MIX_SELECT = false;//视频、图片混选
     private static final int DEFAULT_MAX_IMAGE_NUM = 6;
     private static final int DEFAULT_MAX_VIDEO_NUM = 1;
-    private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //zh 简体中文 en 英文
+    private static final int DEFAULT_LANGUAGE = LanguageConfig.CHINESE; //zh 简体中文 en 英文 ru 俄文
     private static final int DEFAULT_SELECT_MIME_TYPE = SelectMimeType.ofAll();//0: all , 1: image , 2: video , 3: audio
     private static final String DEFAULT_SELECT_MIME_TYPE_LIST = "jpg,jpeg,gif,png,mov,mp4";
     private static final long DEFAULT_IMAGE_SIZE_LIMIT = 0;// 照片限制
@@ -132,8 +132,12 @@ public class SimiSelectorModule {
                 }
                 if (options.hasKey("selectLanguage")) {
                     String language = options.getString("selectLanguage");
-                    if (language != null && language.toLowerCase().contains("en")) {
-                        selectLanguage = LanguageConfig.ENGLISH;
+                    if (language != null) {
+                        if (language.toLowerCase().contains("en")) {
+                            selectLanguage = LanguageConfig.ENGLISH;
+                        } else if (language.toLowerCase().contains("ru")) {
+                            selectLanguage = LanguageConfig.RU;
+                        }
                     }
                 }
                 if (options.hasKey("isCrop")) {
