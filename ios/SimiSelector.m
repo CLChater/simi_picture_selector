@@ -163,17 +163,21 @@ RCT_EXPORT_METHOD(openSelector
         
         ZLPhotoConfiguration *config = [ZLPhotoConfiguration default];
         
-        if (isSingle && allowEditImage && !canSelectVideo) {
-            config.editImageConfiguration.tools_objc = @[@(1)];
-            config.editImageConfiguration.clipRatios = @[ZLImageClipRatio.wh1x1];
+        if (isSingle && mustCrop && !canSelectVideo) {
+            config.allowSelectImage = YES;
+            config.allowSelectGif = NO;
+            config.allowSelectLivePhoto = YES;
+            config.allowSelectOriginal = YES;
+            config.editImageConfiguration.tools_objc = @[ @(1) ];
+            config.editImageConfiguration.clipRatios = @[ ZLImageClipRatio.wh1x1 ];
             config.editImageConfiguration.showClipDirectlyIfOnlyHasClipTool = YES;
             config.maxSelectCount = 1;
             config.editAfterSelectThumbnailImage = YES;
             config.allowSelectVideo = canSelectVideo;
-        }else {
+          } else {
             config.allowSelectImage = YES;
             config.allowSelectVideo =
-            canSelectVideo ? (self.images.count == 0 ? YES : NO) : NO;
+                canSelectVideo ? (self.images.count == 0 ? YES : NO) : NO;
             config.allowSelectGif = NO;
             config.allowSelectLivePhoto = YES;
             config.allowSelectOriginal = YES;
@@ -184,83 +188,131 @@ RCT_EXPORT_METHOD(openSelector
             config.allowEditImage = allowEditImage;
             config.showSelectBtnWhenSingleSelect = YES;
             config.maxSelectVideoDuration = 10800;
-        }
-        
-        config.canSelectAsset = ^BOOL(PHAsset *_Nonnull asset) {
+          }
+
+          // 捕获外部变量到 block 中
+          BOOL capturedIsSingle = isSingle;
+          BOOL capturedMustCrop = mustCrop;
+          BOOL capturedCanSelectVideo = canSelectVideo;
+          ZLLanguageType capturedLanguage = language;
+
+          config.canSelectAsset = ^BOOL(PHAsset *_Nonnull asset) {
             NSNumber *sizeStr = [SimiSelector fetchFormattedAssetSize:asset];
-            
+
             NSString *imageSizeLimitStr = [NSString
-                                           stringWithFormat:@"%.2f", (float)imageSizeLimit / 1024 / 1024];
+                stringWithFormat:@"%.2f", (float)imageSizeLimit / 1024 / 1024];
             NSString *videoSizeLimitStr = [NSString
-                                           stringWithFormat:@"%.2f", (float)videoSizeLimit / 1024 / 1024];
-            
+                stringWithFormat:@"%.2f", (float)videoSizeLimit / 1024 / 1024];
+
             if (asset.mediaType == PHAssetMediaTypeImage) {
-                NSString *tip = [NSString stringWithFormat:@"选择图片不能大于 %@ MB",
-                                 imageSizeLimitStr];
-                if (language == ZLLanguageTypeChineseTraditional) {
-                    tip = [NSString stringWithFormat: @"選擇圖片不能大於 %@ MB", imageSizeLimitStr];
-                }else if (language == ZLLanguageTypeEnglish) {
-                    tip = [NSString stringWithFormat: @"Select an image that cannot be lager than %@ MB", imageSizeLimitStr];
-                }else if (language == ZLLanguageTypeRussian) {
-                    tip = [NSString stringWithFormat: @"Выбрать изображение не больше %@ MB", imageSizeLimitStr];
-                }else {
-                    tip = [NSString stringWithFormat:@"选择图片不能大于%@ MB", imageSizeLimitStr];
+              NSLog(@"检查图片尺寸: %lux%lu, 条件: isSingle=%d, mustCrop=%d, "
+                    @"canSelectVideo=%d",
+                    (unsigned long)asset.pixelWidth, (unsigned long)asset.pixelHeight,
+                    capturedIsSingle, capturedMustCrop, capturedCanSelectVideo);
+
+              // 检查图片尺寸是否小于128px，只在单选且必须裁剪且不能选择视频时才限制
+              if ((capturedIsSingle && capturedMustCrop && !capturedCanSelectVideo) &&
+                  (asset.pixelWidth < 128 || asset.pixelHeight < 128)) {
+                NSString *tip = @"图片尺寸不能小于 128x128 像素";
+                if (capturedLanguage == ZLLanguageTypeChineseTraditional) {
+                  tip = @"圖片尺寸不能小於 128x128 像素";
+                } else if (capturedLanguage == ZLLanguageTypeEnglish) {
+                  tip = @"Image size cannot be smaller than 128x128 pixels";
+                } else if (capturedLanguage == ZLLanguageTypeRussian) {
+                  tip = @"Размер изображения не может быть меньше 128x128 пикселей";
+                } else {
+                  tip = @"图片尺寸不能小于 128x128 像素";
                 }
-                if (imageSizeLimit > 0 && sizeStr.intValue > imageSizeLimit) {
-                    
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [[UIApplication sharedApplication].delegate.window
-                         lc_showToast:tip];
-                    });
-                    
-                    return NO;
-                }
-                return YES;
+
+                dispatch_async(dispatch_get_main_queue(), ^{
+                  [[UIApplication sharedApplication].delegate.window
+                      lc_showToast:tip];
+                });
+
+                return NO;
+              }
+
+              // 检查文件大小限制
+              NSString *tip = [NSString
+                  stringWithFormat:@"选择图片不能大于 %@ MB", imageSizeLimitStr];
+              if (capturedLanguage == ZLLanguageTypeChineseTraditional) {
+                tip = [NSString
+                    stringWithFormat:@"選擇圖片不能大於 %@ MB", imageSizeLimitStr];
+              } else if (capturedLanguage == ZLLanguageTypeEnglish) {
+                tip =
+                    [NSString stringWithFormat:
+                                  @"Select an image that cannot be lager than %@ MB",
+                                  imageSizeLimitStr];
+              } else if (capturedLanguage == ZLLanguageTypeRussian) {
+                tip =
+                    [NSString stringWithFormat:@"Выбрать изображение не больше %@ MB",
+                                               imageSizeLimitStr];
+              } else {
+                tip = [NSString
+                    stringWithFormat:@"选择图片不能大于%@ MB", imageSizeLimitStr];
+              }
+              if (imageSizeLimit > 0 && sizeStr.intValue > imageSizeLimit) {
+
+                dispatch_async(dispatch_get_main_queue(), ^{
+                  [[UIApplication sharedApplication].delegate.window
+                      lc_showToast:tip];
+                });
+
+                return NO;
+              }
+              return YES;
             } else if (asset.mediaType == PHAssetMediaTypeVideo) {
-                NSString *tip = [NSString stringWithFormat:@"选择视频不能大于 %@ MB", videoSizeLimitStr];
-                if (language == ZLLanguageTypeChineseTraditional) {
-                    tip = [NSString stringWithFormat: @"選擇視頻不能大於 %@ MB", videoSizeLimitStr];
-                }else if (language == ZLLanguageTypeEnglish) {
-                    tip = [NSString stringWithFormat: @"Select an video that cannot be lager than %@ MB", videoSizeLimitStr];
-                }else if (language == ZLLanguageTypeRussian) {
-                    tip = [NSString stringWithFormat: @"Выбрать видео не больше %@ MB", videoSizeLimitStr];
-                }else {
-                    tip = [NSString stringWithFormat:@"选择视频不能大于 %@ MB", videoSizeLimitStr];
+              NSString *tip = [NSString
+                  stringWithFormat:@"选择视频不能大于 %@ MB", videoSizeLimitStr];
+              if (capturedLanguage == ZLLanguageTypeChineseTraditional) {
+                tip = [NSString
+                    stringWithFormat:@"選擇視頻不能大於 %@ MB", videoSizeLimitStr];
+              } else if (capturedLanguage == ZLLanguageTypeEnglish) {
+                tip =
+                    [NSString stringWithFormat:
+                                  @"Select an video that cannot be lager than %@ MB",
+                                  videoSizeLimitStr];
+              } else if (capturedLanguage == ZLLanguageTypeRussian) {
+                tip = [NSString stringWithFormat:@"Выбрать видео не больше %@ MB",
+                                                 videoSizeLimitStr];
+              } else {
+                tip = [NSString
+                    stringWithFormat:@"选择视频不能大于 %@ MB", videoSizeLimitStr];
+              }
+              if (videoSizeLimit > 0 && sizeStr.intValue > videoSizeLimit) {
+
+                dispatch_async(dispatch_get_main_queue(), ^{
+                  [[UIApplication sharedApplication].delegate.window
+                      lc_showToast:tip];
+                });
+                return NO;
+              }
+
+              // 拿到资源的文件名
+              PHAssetResource *res =
+                  [PHAssetResource assetResourcesForAsset:asset].firstObject;
+              NSString *ext = res.originalFilename.pathExtension.lowercaseString;
+              if (!([ext isEqualToString:@"mp4"] || [ext isEqualToString:@"mov"])) {
+                NSString *msg = @"只能选择 MP4 或 MOV 格式的视频";
+                if (capturedLanguage == ZLLanguageTypeChineseTraditional) {
+                  msg = @"只能選擇MP4或MOV格式的視頻";
+                } else if (capturedLanguage == ZLLanguageTypeEnglish) {
+                  msg = @"Only MP4 or MOV videos are allowed";
+                } else if (capturedLanguage == ZLLanguageTypeRussian) {
+                  msg = @"Выберите видео только в формате MP4 или MOV";
+                } else {
+                  msg = @"只能选择 MP4 或 MOV 格式的视频";
                 }
-                if (videoSizeLimit > 0 && sizeStr.intValue > videoSizeLimit) {
-                    
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [[UIApplication sharedApplication].delegate.window
-                         lc_showToast:tip];
-                    });
-                    return NO;
-                }
-                
-                // 拿到资源的文件名
-                PHAssetResource *res =
-                [PHAssetResource assetResourcesForAsset:asset].firstObject;
-                NSString *ext = res.originalFilename.pathExtension.lowercaseString;
-                if (!([ext isEqualToString:@"mp4"] || [ext isEqualToString:@"mov"])) {
-                    NSString *msg = @"只能选择 MP4 或 MOV 格式的视频";
-                    if (language == ZLLanguageTypeChineseTraditional) {
-                        msg = @"只能選擇MP4或MOV格式的視頻";
-                    }else if (language == ZLLanguageTypeEnglish) {
-                        msg = @"Only MP4 or MOV videos are allowed";
-                    }else if (language == ZLLanguageTypeRussian) {
-                        msg = @"Выберите видео только в формате MP4 или MOV";
-                    }else {
-                        msg = @"只能选择 MP4 或 MOV 格式的视频";
-                    }
-                    [UIApplication.sharedApplication.delegate.window lc_showToast:msg];
-                    return NO;
-                }
-                
-                return YES;
+                [UIApplication.sharedApplication.delegate.window lc_showToast:msg];
+                return NO;
+              }
+
+              return YES;
             } else {
-                return YES;
+              return YES;
             }
             return YES;
-        };
+          };
         
         ZLPhotoPicker *picker = [[ZLPhotoPicker alloc] init];
         __weak typeof(self) weakSelf = self;
