@@ -174,6 +174,7 @@ RCT_EXPORT_METHOD(openSelector
             config.maxSelectCount = 1;
             config.editAfterSelectThumbnailImage = YES;
             config.allowSelectVideo = canSelectVideo;
+            config.saveNewImageAfterEdit = NO;
           } else {
             config.allowSelectImage = YES;
             config.allowSelectVideo =
