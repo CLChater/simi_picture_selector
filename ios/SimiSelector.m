@@ -166,7 +166,7 @@ RCT_EXPORT_METHOD(openSelector
         if (isSingle && mustCrop && !canSelectVideo) {
             config.allowSelectImage = YES;
             config.allowSelectGif = NO;
-            config.allowSelectLivePhoto = YES;
+            config.allowSelectLivePhoto = NO;
             config.allowSelectOriginal = YES;
             config.editImageConfiguration.tools_objc = @[ @(1) ];
             config.editImageConfiguration.clipRatios = @[ ZLImageClipRatio.wh1x1 ];
@@ -180,7 +180,7 @@ RCT_EXPORT_METHOD(openSelector
             config.allowSelectVideo =
                 canSelectVideo ? (self.images.count == 0 ? YES : NO) : NO;
             config.allowSelectGif = NO;
-            config.allowSelectLivePhoto = YES;
+            config.allowSelectLivePhoto = NO;
             config.allowSelectOriginal = YES;
             config.allowMixSelect = allowMixSelect;
             config.maxSelectCount = maxCount;
@@ -325,6 +325,17 @@ RCT_EXPORT_METHOD(openSelector
                                completion:^(id result) {
                 resolve(result);
             }];
+            
+            NSError *err = nil;
+            AVAudioSession *session = [AVAudioSession sharedInstance];
+
+            [session setCategory:AVAudioSessionCategoryPlayAndRecord
+                     withOptions:AVAudioSessionCategoryOptionAllowBluetooth |
+                                  AVAudioSessionCategoryOptionMixWithOthers
+                           error:&err];
+
+            [session setMode:AVAudioSessionModeVoiceChat error:&err];
+            [session setActive:YES error:&err];
         };
         
         picker.cancelBlock = ^{
