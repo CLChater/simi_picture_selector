@@ -16,6 +16,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -238,7 +239,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (mPermissionResultCallback != null) {
-            PermissionChecker.getInstance().onRequestPermissionsResult(getContext(),permissions,grantResults, mPermissionResultCallback);
+            PermissionChecker.getInstance().onRequestPermissionsResult(getContext(), permissions, grantResults, mPermissionResultCallback);
             mPermissionResultCallback = null;
         }
     }
@@ -456,12 +457,12 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                     selectVideoSize++;
                 }
             }
-            if (checkWithMimeTypeValidity(currentMedia,isSelected, curMimeType, selectVideoSize, curFileSize, curDuration)) {
+            if (checkWithMimeTypeValidity(currentMedia, isSelected, curMimeType, selectVideoSize, curFileSize, curDuration)) {
                 return SelectedManager.INVALID;
             }
         } else {
             // 单一型模式
-            if (checkOnlyMimeTypeValidity(currentMedia,isSelected, curMimeType, selectorConfig.getResultFirstMimeType(), curFileSize, curDuration)) {
+            if (checkOnlyMimeTypeValidity(currentMedia, isSelected, curMimeType, selectorConfig.getResultFirstMimeType(), curFileSize, curDuration)) {
                 return SelectedManager.INVALID;
             }
         }
@@ -547,7 +548,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 // 视频小于最低指定的长度
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(), media,  selectorConfig,
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig,
                                     SelectLimitType.SELECT_MIN_VIDEO_SECOND_SELECT_LIMIT);
                     if (isSelectLimit) {
                         return true;
@@ -561,7 +562,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 // 视频时长超过了指定的长度
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(),  media, selectorConfig,
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig,
                                     SelectLimitType.SELECT_MAX_VIDEO_SECOND_SELECT_LIMIT);
                     if (isSelectLimit) {
                         return true;
@@ -575,7 +576,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 if (!isSelected && selectorConfig.getSelectedResult().size() >= selectorConfig.maxSelectNum) {
                     if (selectorConfig.onSelectLimitTipsListener != null) {
                         boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                                .onSelectLimitTips(getAppContext(),  media, selectorConfig,
+                                .onSelectLimitTips(getAppContext(), media, selectorConfig,
                                         SelectLimitType.SELECT_MAX_SELECT_LIMIT);
                         if (isSelectLimit) {
                             return true;
@@ -624,7 +625,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
             if (fileSize < selectorConfig.selectMinFileSize) {
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(),  media, selectorConfig,
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig,
                                     SelectLimitType.SELECT_MIN_FILE_SIZE_LIMIT);
                     if (isSelectLimit) {
                         return true;
@@ -642,7 +643,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                     // 如果先选择的是视频
                     if (selectorConfig.onSelectLimitTipsListener != null) {
                         boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                                .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MAX_VIDEO_SELECT_LIMIT);
+                                .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MAX_VIDEO_SELECT_LIMIT);
                         if (isSelectLimit) {
                             return true;
                         }
@@ -655,7 +656,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 // 视频小于最低指定的长度
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MIN_VIDEO_SECOND_SELECT_LIMIT);
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MIN_VIDEO_SECOND_SELECT_LIMIT);
                     if (isSelectLimit) {
                         return true;
                     }
@@ -668,7 +669,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 // 视频时长超过了指定的长度
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MAX_VIDEO_SECOND_SELECT_LIMIT);
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MAX_VIDEO_SECOND_SELECT_LIMIT);
                     if (isSelectLimit) {
                         return true;
                     }
@@ -681,7 +682,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 if (!isSelected && selectorConfig.getSelectedResult().size() >= selectorConfig.maxSelectNum) {
                     if (selectorConfig.onSelectLimitTipsListener != null) {
                         boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                                .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MAX_SELECT_LIMIT);
+                                .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MAX_SELECT_LIMIT);
                         if (isSelectLimit) {
                             return true;
                         }
@@ -695,7 +696,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 // 音频小于最低指定的长度
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MIN_AUDIO_SECOND_SELECT_LIMIT);
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MIN_AUDIO_SECOND_SELECT_LIMIT);
                     if (isSelectLimit) {
                         return true;
                     }
@@ -707,7 +708,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 // 音频时长超过了指定的长度
                 if (selectorConfig.onSelectLimitTipsListener != null) {
                     boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                            .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MAX_AUDIO_SECOND_SELECT_LIMIT);
+                            .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MAX_AUDIO_SECOND_SELECT_LIMIT);
                     if (isSelectLimit) {
                         return true;
                     }
@@ -720,7 +721,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                 if (!isSelected && selectorConfig.getSelectedResult().size() >= selectorConfig.maxSelectNum) {
                     if (selectorConfig.onSelectLimitTipsListener != null) {
                         boolean isSelectLimit = selectorConfig.onSelectLimitTipsListener
-                                .onSelectLimitTips(getAppContext(),  media, selectorConfig, SelectLimitType.SELECT_MAX_SELECT_LIMIT);
+                                .onSelectLimitTips(getAppContext(), media, selectorConfig, SelectLimitType.SELECT_MAX_SELECT_LIMIT);
                         if (isSelectLimit) {
                             return true;
                         }
@@ -1434,6 +1435,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
         showLoading();
         ConcurrentHashMap<String, LocalMedia> queue = new ConcurrentHashMap<>();
         ArrayList<Uri> source = new ArrayList<>();
+        boolean isHasVideo = false;
         for (int i = 0; i < result.size(); i++) {
             LocalMedia media = result.get(i);
             String availablePath = media.getAvailablePath();
@@ -1443,31 +1445,40 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
             if (selectorConfig.isCheckOriginalImage && selectorConfig.isOriginalSkipCompress) {
                 continue;
             }
-            if (PictureMimeType.isHasImage(media.getMimeType())) {
+//            if (PictureMimeType.isHasImage(media.getMimeType())) {TODO
+            if (PictureMimeType.isHasImage(media.getMimeType()) || PictureMimeType.isHasVideo(media.getMimeType())) {
                 Uri uri = PictureMimeType.isContent(availablePath) ? Uri.parse(availablePath) : Uri.fromFile(new File(availablePath));
                 source.add(uri);
+                Log.d(TAG, "onCompress: availablePath " + availablePath);
                 queue.put(availablePath, media);
+            }
+
+            if (PictureMimeType.isHasVideo(media.getMimeType())) {
+                isHasVideo = true;
             }
         }
         if (queue.size() == 0) {
             onResultEvent(result);
         } else {
-            selectorConfig.compressFileEngine.onStartCompress(getAppContext(), source, new OnKeyValueResultCallbackListener() {
+            selectorConfig.compressFileEngine.onStartCompress(getAppContext(), source, isHasVideo, new OnKeyValueResultCallbackListener() {
                 @Override
                 public void onCallback(String srcPath, String compressPath) {
                     if (TextUtils.isEmpty(srcPath)) {
                         onResultEvent(result);
                     } else {
                         LocalMedia media = queue.get(srcPath);
+                        Log.d(TAG, "onCallback: media = " + media);
                         if (media != null) {
-                            if (SdkVersionUtils.isQ()){
+                            if (SdkVersionUtils.isQ()) {
                                 if (!TextUtils.isEmpty(compressPath) && (compressPath.contains("Android/data/")
-                                        || compressPath.contains("data/user/"))) {
+                                        || compressPath.contains("data/user/") || compressPath.contains("/storage/emulated/"))) {
+                                    Log.d(TAG, "onCallback: compressPath = " + compressPath);
                                     media.setCompressPath(compressPath);
                                     media.setCompressed(!TextUtils.isEmpty(compressPath));
                                     media.setSandboxPath(media.getCompressPath());
                                 }
                             } else {
+                                Log.d(TAG, "onCallback: compressPath2 = " + compressPath);
                                 media.setCompressPath(compressPath);
                                 media.setCompressed(!TextUtils.isEmpty(compressPath));
                             }
@@ -1570,7 +1581,8 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
         if (selectorConfig.compressFileEngine != null) {
             for (int i = 0; i < selectorConfig.getSelectCount(); i++) {
                 LocalMedia media = selectorConfig.getSelectedResult().get(i);
-                if (PictureMimeType.isHasImage(media.getMimeType())) {
+//                if (PictureMimeType.isHasImage(media.getMimeType())) { TODO
+                if (PictureMimeType.isHasImage(media.getMimeType()) || PictureMimeType.isHasVideo(media.getMimeType())) {
                     return true;
                 }
             }
@@ -2030,7 +2042,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
     /**
      * Get the video player engine again, provided that the user implements the IApp interface in the Application
      */
-    private void createVideoPlayerEngine(){
+    private void createVideoPlayerEngine() {
         if (selectorConfig.videoPlayerEngine == null) {
             PictureSelectorEngine baseEngine = PictureAppMaster.getInstance().getPictureSelectorEngine();
             if (baseEngine != null) {

@@ -10,8 +10,10 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.media3.common.util.UnstableApi;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
@@ -35,10 +37,12 @@ import com.simi.pictureselector.entity.MediaExtraInfo;
 import com.simi.pictureselector.interfaces.OnKeyValueResultCallbackListener;
 import com.simi.pictureselector.interfaces.OnMediaEditInterceptListener;
 import com.simi.pictureselector.interfaces.OnResultCallbackListener;
-import com.simi.pictureselector.interfaces.OnSelectFilterListener;
 import com.simi.pictureselector.interfaces.OnSelectLimitTipsListener;
 import com.simi.pictureselector.interfaces.OnVideoThumbnailEventListener;
 import com.simi.pictureselector.language.LanguageConfig;
+import com.simi.pictureselector.luban.Luban;
+import com.simi.pictureselector.luban.OnNewCompressListener;
+import com.simi.pictureselector.luban.VideoCompressor;
 import com.simi.pictureselector.style.BottomNavBarStyle;
 import com.simi.pictureselector.style.PictureSelectorStyle;
 import com.simi.pictureselector.style.SelectMainStyle;
@@ -59,9 +63,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-
-import top.zibin.luban.Luban;
-import top.zibin.luban.OnNewCompressListener;
 
 public class SimiSelectorModule {
     private static final String TAG = "SimiSelectorModule";
@@ -180,6 +181,7 @@ public class SimiSelectorModule {
                 .setEditMediaInterceptListener(isCrop ? new MeOnMediaEditInterceptListener(getSandboxPath(), buildOptions()) : null)
                 .setImageSpanCount(3)
                 .isOriginalControl(true)
+                .isOriginalSkipCompress(true)
                 .isPageStrategy(true)
                 .isPageSyncAlbumCount(true)
                 .setMaxSelectNum(maxSelectNum)
@@ -233,16 +235,17 @@ public class SimiSelectorModule {
 
                             media.putString("mediaType", mimeType);
                             media.putDouble("size", localMedia.getSize());
-                            if (PictureMimeType.isHasVideo(mimeType)) {
-                                String uri = localMedia.getRealPath();
-                                media.putString("uri", "file://" + uri);
-                            } else if (PictureMimeType.isHasImage(mimeType)) {
+//                            if (PictureMimeType.isHasVideo(mimeType)) {
+//                                String uri = localMedia.getRealPath();
+//                                media.putString("uri", "file://" + uri);
+//                            } else
+                            if (PictureMimeType.isHasImage(mimeType) || PictureMimeType.isHasVideo(mimeType)) {
                                 boolean original = localMedia.isOriginal();
                                 String realPath = localMedia.getRealPath();
                                 String compressPath = localMedia.getCompressPath();
                                 String uri = original ? realPath : (compressPath != null && !compressPath.isEmpty()) ? compressPath : realPath;
                                 if (!original) {
-                                    long fileSize = FileUtil.getFileSize(uri);
+                                    long fileSize = FileUtil.getFileSize(compressPath);
                                     media.putDouble("size", fileSize);
                                 }
                                 media.putString("uri", "file://" + uri);
@@ -332,37 +335,69 @@ public class SimiSelectorModule {
     }
 
     private static class ImageFileCompressEngine implements CompressFileEngine {
+        @OptIn(markerClass = UnstableApi.class)
         @Override
-        public void onStartCompress(Context context, ArrayList<Uri> source, OnKeyValueResultCallbackListener call) {
-            Luban.with(context)
-                    .load(source)
-                    .ignoreBy(100)
-                    .setRenameListener(filePath -> {
-                        int indexOf = filePath.lastIndexOf(".");
-                        String postfix = indexOf != -1 ? filePath.substring(indexOf) : ".jpg";
-                        return DateUtils.getCreateFileName("CMP_") + postfix;
-                    })
-                    .filter(path -> PictureMimeType.isUrlHasImage(path) && !PictureMimeType.isUrlHasGif(path))
-                    .setCompressListener(new OnNewCompressListener() {
-                        @Override
-                        public void onStart() {
-                        }
+        public void onStartCompress(Context context, ArrayList<Uri> source, boolean isHasVideo, OnKeyValueResultCallbackListener call) {
+            if (isHasVideo) {
+                VideoCompressor.with(context).load(source).setQuality(0.5f).setListener(new VideoCompressor.CompressListener() {
 
-                        @Override
-                        public void onSuccess(String source, File compressFile) {
-                            if (call != null) {
-                                call.onCallback(source, compressFile.getAbsolutePath());
-                            }
-                        }
+                    @Override
+                    public void onCompleted(String source, File compressFile) {
+                        Log.d(TAG, "onCompleted: source = " + source);
+                        Log.d(TAG, "onCompleted: file = " + compressFile.getAbsolutePath());
+                        String fileSize = PictureFileUtils.formatFileSize(compressFile.length());
+                        Log.d(TAG, "onCompleted: fileSize = " + fileSize);
 
-                        @Override
-                        public void onError(String source, Throwable e) {
-                            if (call != null) {
-                                call.onCallback(source, null);
-                            }
+                        if (call != null) {
+                            call.onCallback(source, compressFile.getAbsolutePath());
                         }
-                    })
-                    .launch();
+                    }
+
+                    @Override
+                    public void onError(String source, Exception exception) {
+                        Log.d(TAG, "onError: " + exception);
+                        if (call != null) {
+                            call.onCallback(source, null);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled() {
+
+                    }
+                }).start();
+
+            } else {
+                Luban.with(context)
+                        .load(source)
+                        .ignoreBy(100)
+                        .setRenameListener(filePath -> {
+                            int indexOf = filePath.lastIndexOf(".");
+                            String postfix = indexOf != -1 ? filePath.substring(indexOf) : ".jpg";
+                            return DateUtils.getCreateFileName("CMP_") + postfix;
+                        })
+                        .filter(path -> PictureMimeType.isUrlHasImage(path) && !PictureMimeType.isUrlHasGif(path))
+                        .setCompressListener(new OnNewCompressListener() {
+                            @Override
+                            public void onStart() {
+                            }
+
+                            @Override
+                            public void onSuccess(String source, File compressFile) {
+                                if (call != null) {
+                                    call.onCallback(source, compressFile.getAbsolutePath());
+                                }
+                            }
+
+                            @Override
+                            public void onError(String source, Throwable e) {
+                                if (call != null) {
+                                    call.onCallback(source, null);
+                                }
+                            }
+                        })
+                        .launch();
+            }
         }
     }
 

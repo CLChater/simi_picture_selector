@@ -91,6 +91,13 @@ dependencies {
     implementation "androidx.viewpager2:viewpager2:1.0.0"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
     implementation "com.github.bumptech.glide:glide:4.15.1"
-    implementation 'io.github.lucksiege:compress:v3.11.2'
+    //图片压缩、剪裁
+//    implementation 'io.github.lucksiege:compress:v3.11.2'
     implementation 'io.github.lucksiege:ucrop:v3.11.2'
+    implementation 'id.zelory:compressor:3.0.1'
+
+    //视频压缩
+    implementation "androidx.media3:media3-transformer:1.4.1"
+    implementation "androidx.media3:media3-effect:1.4.1"
+    implementation "androidx.media3:media3-common:1.4.1"
 }
