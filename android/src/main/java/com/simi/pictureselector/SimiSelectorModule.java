@@ -235,11 +235,12 @@ public class SimiSelectorModule {
 
                             media.putString("mediaType", mimeType);
                             media.putDouble("size", localMedia.getSize());
-//                            if (PictureMimeType.isHasVideo(mimeType)) {
-//                                String uri = localMedia.getRealPath();
-//                                media.putString("uri", "file://" + uri);
-//                            } else
-                            if (PictureMimeType.isHasImage(mimeType) || PictureMimeType.isHasVideo(mimeType)) {
+                            if (PictureMimeType.isHasVideo(mimeType)) {
+                                String uri = localMedia.getRealPath();
+                                media.putString("uri", "file://" + uri);
+                            } else
+                            if (PictureMimeType.isHasImage(mimeType)) {
+//                            if (PictureMimeType.isHasImage(mimeType) || PictureMimeType.isHasVideo(mimeType)) {
                                 boolean original = localMedia.isOriginal();
                                 String realPath = localMedia.getRealPath();
                                 String compressPath = localMedia.getCompressPath();

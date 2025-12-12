@@ -1445,17 +1445,17 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
             if (selectorConfig.isCheckOriginalImage && selectorConfig.isOriginalSkipCompress) {
                 continue;
             }
-//            if (PictureMimeType.isHasImage(media.getMimeType())) {TODO
-            if (PictureMimeType.isHasImage(media.getMimeType()) || PictureMimeType.isHasVideo(media.getMimeType())) {
+            if (PictureMimeType.isHasImage(media.getMimeType())) {//TODO
+//            if (PictureMimeType.isHasImage(media.getMimeType()) || PictureMimeType.isHasVideo(media.getMimeType())) {
                 Uri uri = PictureMimeType.isContent(availablePath) ? Uri.parse(availablePath) : Uri.fromFile(new File(availablePath));
                 source.add(uri);
-                Log.d(TAG, "onCompress: availablePath " + availablePath);
+//                Log.d("AAA", "onCompress: availablePath " + availablePath);
                 queue.put(availablePath, media);
             }
 
-            if (PictureMimeType.isHasVideo(media.getMimeType())) {
-                isHasVideo = true;
-            }
+//            if (PictureMimeType.isHasVideo(media.getMimeType())) {
+//                isHasVideo = true;
+//            }
         }
         if (queue.size() == 0) {
             onResultEvent(result);
@@ -1467,7 +1467,7 @@ public abstract class PictureCommonFragment extends Fragment implements IPicture
                         onResultEvent(result);
                     } else {
                         LocalMedia media = queue.get(srcPath);
-                        Log.d(TAG, "onCallback: media = " + media);
+//                        Log.d(TAG, "onCallback: media = " + media);
                         if (media != null) {
                             if (SdkVersionUtils.isQ()) {
                                 if (!TextUtils.isEmpty(compressPath) && (compressPath.contains("Android/data/")
